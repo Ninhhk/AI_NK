@@ -54,6 +54,7 @@ AI_NVCB/
    ```bash
    python run_backend.py
    ```
+   Wait until the application finished startup.
 3. Start the frontend application:
    ```bash
    streamlit run frontend/app.py
