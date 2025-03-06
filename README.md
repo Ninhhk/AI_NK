@@ -49,7 +49,7 @@ AI_NVCB/
    ```bash
    ollama run qwen2.5:7b
    ```
-
+   After successful run, you can try prompt the model with "hi" to check its response. Press Ctrl+D to quit.
 2. Start the backend server:
    ```bash
    python run_backend.py
