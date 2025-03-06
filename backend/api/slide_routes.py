@@ -36,7 +36,7 @@ async def generate_slides(
     )
 ) -> Dict[str, Any]:
     """
-    Generate slides based on the given topic.
+    Generate Vietnamese slides based on the given topic.
     
     Parameters:
     - topic: The main topic for the presentation

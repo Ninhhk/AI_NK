@@ -23,7 +23,7 @@ DEFAULT_TITLE = "Generated Presentation"
 SUPPORTED_FORMATS = [".pptx", ".pdf"]
 
 PROMPT = """
-Generate a presentation outline for the given topic. The output should be a JSON array of slide objects.
+Generate a Vietnamese presentation outline for the given topic. The output should be a JSON array of slide objects.
 Each slide should have a 'title' and 'content' field. The content should be in bullet points (use '-' for bullets).
 Keep it concise and clear.
 
