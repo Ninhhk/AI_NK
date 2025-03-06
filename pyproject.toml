@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "ai-nvcb"
+version = "0.1.0"
+description = "AI-powered document analysis and presentation generation"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "backend" },
+    { include = "frontend" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.110.0"
+uvicorn = "^0.27.1"
+python-multipart = "^0.0.9"
+openai = "^1.14.3"
+langchain = "^0.1.20"
+langchain-community = "^0.0.38"
+langchain-openai = "^0.1.1"
+rich = "^13.7.1"
+python-dotenv = "^1.0.1"
+pypdf = "^4.1.0"
+tiktoken = "^0.6.0"
+streamlit = "^1.32.2"
+pillow = "^10.3.0"
+lxml = "^5.2.2"
+XlsxWriter = "^3.2.0"
+python-pptx = "^0.6.23"
+gpt4all = "^2.7.0"
+Flask = "^2.2.5"
+Flask-Cors = "^4.0.0"
+sentence-transformers = "^2.5.1"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+pytest = "^8.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api" 
