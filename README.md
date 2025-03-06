@@ -39,20 +39,26 @@ AI_NVCB/
 4. Set up environment variables:
    Create a `.env` file with:
    ```
-   OPENAI_API_KEY=your_api_key_here
+   MODEL_NAME=qwen2.5:7b
+   OLLAMA_BASE_URL=http://localhost:11434
    ```
 
 ## Usage
 
-1. Start the backend server:
+1. Start Ollama server and ensure your model is available:
    ```bash
-   poetry run python backend/app.py
+   ollama run qwen2.5:7b
    ```
 
-2. Start the frontend application:
+2. Start the backend server:
    ```bash
-   poetry run streamlit run frontend/app.py
+   python run_backend.py
    ```
+3. Start the frontend application:
+   ```bash
+   streamlit run frontend/app.py
+   ```
+4. Access the application in your browser at http://localhost:8501
 
 ## Development
 
