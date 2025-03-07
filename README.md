@@ -82,23 +82,14 @@ AI_NVCB/
    ```bash
    ollama run qwen2.5:7b
    ```
-   Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+
-<<<<<<< HEAD
    Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+D to exit.
 
-=======
-   After successful run, you can try prompt the model with "hi" to check its response. Press Ctrl+D to quit.
->>>>>>> 534bf6eee10a45a0673dcf39ba6679f4c15b9472
 2. Start the backend server:
    ```bash
    python run_backend.py
    ```
-<<<<<<< HEAD
-3. Start the frontend application on a different terminal(Ctrl+Shift+5 in VSCode):
-=======
    Wait until the application finished startup.
 3. Start the frontend application:
->>>>>>> 534bf6eee10a45a0673dcf39ba6679f4c15b9472
    ```bash
    streamlit run frontend/app.py
    ```
@@ -188,7 +179,7 @@ AI_NVCB/
    ```bash
    ollama run qwen2.5:7b
    ```
-   Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử nhắc hoặc nhấn Ctrl+D để thoát.
+   Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 
 2. Khởi động máy chủ backend:
    ```bash
