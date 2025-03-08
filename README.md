@@ -168,9 +168,11 @@ AI_NVCB/
    poetry install
    ```
 
-5. Khởi chạy ứng dụng:
-   ```bash
-   streamlit run frontend/app.py
+5. Cài đặt môi trường(nếu không có file .env ):
+   Tạo file `.env` với nội dung:
+   ```
+   MODEL_NAME=qwen2.5:7b
+   OLLAMA_BASE_URL=http://localhost:11434
    ```
 
 ## Sử dụng
