@@ -1,0 +1,143 @@
+/* Modern UI Theme */
+:root {
+    --primary-color: #1f77b4;
+    --secondary-color: #2c3e50;
+    --accent-color: #3498db;
+    --background-dark: #0E1117;
+    --card-background: #262730;
+    --text-primary: #FAFAFA;
+    --text-secondary: #888;
+    --success-color: #2ecc71;
+    --error-color: #e74c3c;
+    --warning-color: #f1c40f;
+}
+
+/* Main Layout */
+.main {
+    padding: 2rem;
+    background-color: var(--background-dark);
+    background-image: linear-gradient(135deg, #1a1f2c 0%, #0E1117 100%);
+}
+
+/* Cards and Containers */
+.card {
+    background-color: var(--card-background);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Buttons */
+.stButton>button {
+    width: 100%;
+    border-radius: 8px;
+    height: 3em;
+    margin-top: 1em;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    color: white;
+    border: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(31, 119, 180, 0.3);
+}
+
+/* Input Fields */
+.stTextInput>div>div>input,
+.stNumberInput>div>div>input,
+.stTextArea>div>div>textarea {
+    border-radius: 8px;
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.stTextInput>div>div>input:focus,
+.stNumberInput>div>div>input:focus,
+.stTextArea>div>div>textarea:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Radio and Checkbox */
+.stRadio > div,
+.stCheckbox > div {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* File Uploader */
+.stFileUploader {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+}
+
+/* Headers */
+h1, h2, h3, h4 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Text */
+.stMarkdown {
+    color: var(--text-primary);
+}
+
+/* Status Messages */
+.stStatus {
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    padding: 2rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+} 

@@ -53,6 +53,12 @@ def validate_slide_content(slides_data: List[Dict[str, Any]]) -> List[Dict[str, 
         cleaned_slides.append(cleaned_slide)
     return cleaned_slides
 
+def _sanitize_filename(name: str) -> str:
+    # Remove invalid characters and truncate if too long
+    sanitized = re.sub(r'[<>:"/\\|?*]', '_', name)
+    # Limit to 256 characters to ensure compatibility with most filesystems
+    return sanitized[:100]  # Windows and most Unix filesystems have a 255-260 character limit
+
 class SlideGenerationService:
     def __init__(self, model_name: str = OLLAMA_CONFIG["model_name"], base_url: str = OLLAMA_CONFIG["base_url"]):
         self.model_name = model_name
@@ -200,7 +206,7 @@ Example response:
         """Save the generated slides as JSON and PPTX."""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).strip()
+            safe_topic = _sanitize_filename(topic)
             safe_topic = safe_topic.replace(' ', '_')
             
             # Create output directory if it doesn't exist

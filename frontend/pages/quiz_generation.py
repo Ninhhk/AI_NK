@@ -5,8 +5,8 @@ from typing import Optional
 
 # Set page config for better appearance
 st.set_page_config(
-    page_title="AI Document Analysis",
-    page_icon="📄",
+    page_title="AI Quiz Generator",
+    page_icon="❓",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -15,26 +15,24 @@ st.set_page_config(
 with open('frontend/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-def analyze_document(
+def generate_quiz(
     file,
-    query_type: str,
-    user_query: Optional[str] = None,
+    num_questions: int = 5,
+    difficulty: str = "medium",
     start_page: int = 0,
     end_page: int = -1,
 ) -> dict:
-    """Send document to backend for analysis."""
+    """Send document to backend for quiz generation."""
     files = {"file": file}
     data = {
-        "query_type": query_type,
+        "num_questions": str(num_questions),
+        "difficulty": difficulty,
         "start_page": str(start_page),
         "end_page": str(end_page),
     }
-    
-    if user_query:
-        data["user_query"] = user_query
         
     response = requests.post(
-        "http://localhost:8000/api/documents/analyze",
+        "http://localhost:8000/api/documents/generate-quiz",
         files=files,
         data=data,
     )
@@ -47,10 +45,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                📄 Phân Tích Tài Liệu
+                ❓ Tạo Bài Kiểm Tra
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Xử Lý Thông Tin Hiệu Quả Với AI
+                Tạo Bài Kiểm Tra Tự Động Từ Tài Liệu Với AI
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -92,7 +90,7 @@ with st.sidebar:
                 📑 Phạm Vi Trang
             </h3>
             <p style='color: var(--text-primary); margin: 0.5em 0;'>
-                Chọn phạm vi trang. Các trang được đánh số từ 0. Đối với trang cuối cùng, bạn cũng có thể sử dụng số âm để đếm từ cuối, ví dụ: -1 là trang cuối cùng, -2 là trang gần cuối, v.v.
+                Chọn phạm vi trang để tạo câu hỏi. Sử dụng -1 cho trang cuối cùng.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -106,69 +104,70 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                🔍 Loại Phân Tích
+                🎯 Tùy Chọn Bài Kiểm Tra
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
-    query_type = st.radio("Chọn chức năng", ["summary", "qa"])
-
-# Main content area
-if query_type == "qa":
-    st.markdown("""
-        <div class="card fade-in">
-            <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                ❓ Câu hỏi của bạn
-            </h3>
-        </div>
-    """, unsafe_allow_html=True)
+    num_questions = st.slider(
+        "Số câu hỏi:",
+        min_value=1,
+        max_value=20,
+        value=5,
+        help="Chọn số lượng câu hỏi cho bài kiểm tra"
+    )
     
-    user_query = st.text_area(
-        "",
-        value="Dữ liệu nào được sử dụng trong phân tích này?",
-        help="Nhập câu hỏi cụ thể để nhận câu trả lời chính xác"
+    difficulty = st.select_slider(
+        "Độ khó:",
+        options=["easy", "medium", "hard"],
+        value="medium",
+        format_func=lambda x: {"easy": "Dễ", "medium": "Trung bình", "hard": "Khó"}[x],
+        help="Chọn độ khó cho các câu hỏi"
     )
 
-if st.button("🚀 Phân Tích", type="primary"):
-    result = None
-    start = time.time()
+# Main content area
+if st.button("🚀 Tạo Bài Kiểm Tra", type="primary"):
     if file is None:
-        st.error("⚠️ Vui lòng tải lên tệp.")
+        st.error("⚠️ Vui lòng tải lên tệp PDF trước khi tạo bài kiểm tra.")
     else:
-        with st.status("🔄 Đang phân tích...", expanded=True) as status:
+        with st.status("🔄 Đang tạo bài kiểm tra...", expanded=True) as status:
             try:
-                result = analyze_document(
+                start_time = time.time()
+                result = generate_quiz(
                     file=file,
-                    query_type=query_type,
-                    user_query=user_query if query_type == "qa" else None,
+                    num_questions=num_questions,
+                    difficulty=difficulty,
                     start_page=start_page,
                     end_page=end_page,
                 )
                 status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
 
+                # Display quiz in a card with better formatting
+                st.markdown("""
+                    <div class="card fade-in">
+                        <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
+                            📝 Bài Kiểm Tra
+                        </h2>
+                        <div style='color: var(--text-primary); white-space: pre-line;'>
+                """, unsafe_allow_html=True)
+                
+                # Format the quiz content
+                quiz_content = result["result"].replace("\n", "<br>")
+                st.markdown(f"<div style='font-size: 1.1em;'>{quiz_content}</div>", unsafe_allow_html=True)
+                st.markdown("</div></div>", unsafe_allow_html=True)
+                
+                # Show performance metrics
+                st.markdown(f"""
+                    <div class="card fade-in" style='margin-top: 1rem;'>
+                        <p style='margin: 0; color: var(--text-primary);'>
+                            <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start_time:.2f} giây
+                        </p>
+                    </div>
+                """, unsafe_allow_html=True)
+
             except Exception as e:
                 status.update(label="❌ Lỗi", state="error", expanded=False)
                 st.error(f"⚠️ Đã xảy ra lỗi: {e}")
-                result = None
-
-        if result:
-            st.markdown("""
-                <div class="card fade-in">
-                    <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                        📊 Kết Quả
-                    </h2>
-                    <div style='color: var(--text-primary);'>
-            """, unsafe_allow_html=True)
-            st.markdown(result["result"])
-            st.markdown("</div></div>", unsafe_allow_html=True)
-            
-            st.markdown(f"""
-                <div class="card fade-in" style='margin-top: 1rem;'>
-                    <p style='margin: 0; color: var(--text-primary);'>
-                        <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start:.2f} giây
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
 
 # Footer with gradient separator
 st.markdown("""
@@ -176,4 +175,4 @@ st.markdown("""
     <div class="footer fade-in">
         <p style='margin: 0.5em 0;'>Powered by AI Technology | Made with ❤️</p>
     </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) 

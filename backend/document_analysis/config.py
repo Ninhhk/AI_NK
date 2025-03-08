@@ -1,11 +1,10 @@
 from typing import Dict, Any
 
 # Ollama Configuration
-OLLAMA_CONFIG: Dict[str, Any] = {
-    "model": "qwen2.5:7b",  # or any other model you have in Ollama
+OLLAMA_CONFIG = {
+    "model_name": "qwen2.5:7b",
     "base_url": "http://localhost:11434",
-    "temperature": 0.7,
-    "max_tokens": 2000,
+    "temperature": 0.1
 }
 
 # Document Analysis Settings

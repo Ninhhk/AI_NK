@@ -1,30 +1,25 @@
-from fastapi import APIRouter, UploadFile, File, Form
-from typing import Optional, Dict, Any
-import os
+from fastapi import APIRouter, File, UploadFile, Form
+from typing import Dict, Any
 
-from backend.document_analysis.document_service import DocumentAnalysisService
-from backend.document_analysis.config import OLLAMA_CONFIG
+from .document_service import DocumentAnalysisService
+from .config import OLLAMA_CONFIG
 
 router = APIRouter()
-
-# Initialize the document service
 document_service = DocumentAnalysisService(
     model_name=OLLAMA_CONFIG["model_name"],
-    base_url=OLLAMA_CONFIG["base_url"],
-    temperature=OLLAMA_CONFIG["temperature"]
+    base_url=OLLAMA_CONFIG["base_url"]
 )
 
 @router.post("/analyze")
 async def analyze_document(
     file: UploadFile = File(...),
-    query_type: str = Form("summary"),
-    user_query: Optional[str] = Form(None),
+    query_type: str = Form(...),
+    user_query: str = Form(None),
     start_page: int = Form(0),
     end_page: int = Form(-1),
 ) -> Dict[str, Any]:
     """
-    Analyze a document using the document analysis service.
-    Query type can be either 'summary' or 'qa'.
+    Analyze a document based on the query type.
     """
     file_content = await file.read()
     
@@ -47,7 +42,7 @@ async def generate_quiz(
     end_page: int = Form(-1),
 ) -> Dict[str, Any]:
     """
-    Generate a quiz from a document using the document analysis service.
+    Generate a quiz from a document.
     """
     file_content = await file.read()
     
@@ -59,11 +54,4 @@ async def generate_quiz(
         end_page=end_page,
     )
     
-    return result
-
-@router.get("/health")
-async def health_check() -> Dict[str, Any]:
-    """
-    Health check endpoint
-    """
-    return {"status": "healthy"} 
+    return result 

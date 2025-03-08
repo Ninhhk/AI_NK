@@ -1,7 +1,9 @@
 import os
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, List, Any
 from pathlib import Path
 import tempfile
+import re
+import unicodedata
 
 from langchain_community.llms import Ollama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -10,33 +12,92 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from .config import OLLAMA_CONFIG
+
+def is_chinese(char: str) -> bool:
+    """Check if a character is Chinese."""
+    try:
+        return 'CJK' in unicodedata.name(char)
+    except ValueError:
+        return False
+
+def contains_chinese(text: str) -> bool:
+    """Check if text contains any Chinese characters."""
+    return any(is_chinese(char) for char in text)
+
+def sanitize_text(text: str) -> str:
+    """Remove Chinese characters and clean up text."""
+    # Remove Chinese characters
+    cleaned = ''.join(char for char in text if not is_chinese(char))
+    # Remove multiple spaces
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    # Remove multiple newlines
+    cleaned = re.sub(r'\n+', '\n', cleaned)
+    return cleaned.strip()
+
+def sanitize_quiz_content(content: str) -> str:
+    """Sanitize quiz content and ensure proper formatting."""
+    # First remove any Chinese characters while preserving structure
+    lines = content.split('\n')
+    sanitized_lines = []
+    
+    for line in lines:
+        # Skip completely empty lines
+        if not line.strip():
+            continue
+            
+        # Remove Chinese characters from the line
+        cleaned_line = ''.join(char for char in line if not is_chinese(char))
+        cleaned_line = cleaned_line.strip()
+        
+        if not cleaned_line:
+            continue
+            
+        # Format based on line type
+        if cleaned_line.startswith('Câu'):
+            sanitized_lines.extend(['', cleaned_line])  # Add blank line before question
+        elif cleaned_line.startswith(('A.', 'B.', 'C.', 'D.')):
+            sanitized_lines.append(cleaned_line)
+        elif 'Đáp án đúng:' in cleaned_line:
+            sanitized_lines.extend([cleaned_line, ''])  # Add blank line after answer
+        else:
+            sanitized_lines.append(cleaned_line)
+    
+    # Join lines with proper newlines and ensure consistent spacing
+    result = '\n'.join(sanitized_lines)
+    
+    # Clean up any multiple consecutive newlines
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    
+    return result.strip()
 
 class DocumentAnalysisService:
     def __init__(
         self,
-        model_name: str,
-        ollama_base_url: str = "http://localhost:11434",
-        temperature: float = 0.1,
+        model_name: str = OLLAMA_CONFIG["model_name"],
+        base_url: str = OLLAMA_CONFIG["base_url"],
+        temperature: float = OLLAMA_CONFIG["temperature"],
     ):
         self.model_name = model_name
         self.temperature = temperature
-        self.ollama_base_url = ollama_base_url
-        self.llm = self._initialize_llm()
+        self.base_url = base_url
+        self.llm = self._initialize_model()
         self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         
-    def _initialize_llm(self) -> Ollama:
+    def _initialize_model(self) -> Ollama:
         return Ollama(
             model=self.model_name,
-            temperature=self.temperature,
-            base_url=self.ollama_base_url,
+            base_url=self.base_url,
+            temperature=self.temperature
         )
 
-    def _load_document(self, file_path: Union[str, Path], start_page: int = 0, end_page: int = -1) -> list:
-        loader = PyPDFLoader(str(file_path))
+    def _load_document(self, file_path: str, start_page: int = 0, end_page: int = -1) -> List[Any]:
+        """Load and split document into pages."""
+        loader = PyPDFLoader(file_path)
         pages = loader.load()
         
-        if end_page < 0:
-            end_page = len(pages) + end_page + 1
+        if end_page == -1:
+            end_page = len(pages)
         
         return pages[start_page:end_page]
 
@@ -134,4 +195,73 @@ Answer:"""
             # Clean up temporary file
             os.unlink(temp_path)
             
-        return {"result": "Analysis completed successfully"} 
+        return {"result": "Analysis completed successfully"}
+
+    def generate_quiz(
+        self,
+        file_content: bytes,
+        num_questions: int = 5,
+        difficulty: str = "medium",
+        start_page: int = 0,
+        end_page: int = -1,
+    ) -> Dict[str, Any]:
+        """Generate quiz questions from a document."""
+        # Save temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(file_content)
+            temp_path = temp_file.name
+
+        try:
+            pages = self._load_document(temp_path, start_page, end_page)
+            text_splitter = RecursiveCharacterTextSplitter()
+            texts = text_splitter.split_documents(pages)
+            
+            # Combine all text content
+            combined_text = "\n\n".join([doc.page_content for doc in texts])
+            
+            quiz_template = """Generate a quiz with {num_questions} questions based on the following text. 
+For each question, provide multiple-choice options and indicate the correct answer.
+IMPORTANT: YOU MUST RESPOND IN VIETNAMESE LANGUAGE ONLY. DO NOT USE ANY CHINESE CHARACTERS.
+
+Hãy tạo bài kiểm tra với {num_questions} câu hỏi dựa trên văn bản sau đây.
+Đối với mỗi câu hỏi, hãy cung cấp các lựa chọn trắc nghiệm và chỉ ra câu trả lời đúng.
+QUAN TRỌNG: CHỈ SỬ DỤNG TIẾNG VIỆT, KHÔNG DÙNG CHỮ HÁN.
+
+Văn bản:
+{text}
+
+Yêu cầu:
+1. Tạo {num_questions} câu hỏi trắc nghiệm
+2. Mỗi câu hỏi phải có 4 lựa chọn (A, B, C, D)
+3. Chỉ rõ đáp án đúng cho mỗi câu hỏi
+4. Độ khó: {difficulty} (dễ/trung bình/khó)
+5. Tất cả nội dung phải bằng tiếng Việt
+6. KHÔNG ĐƯỢC DÙNG CHỮ HÁN
+
+Định dạng:
+Câu 1: [Nội dung câu hỏi]
+A. [Lựa chọn A]
+B. [Lựa chọn B]
+C. [Lựa chọn C]
+D. [Lựa chọn D]
+Đáp án đúng: [A/B/C/D]
+
+[Lặp lại cho các câu hỏi tiếp theo]
+"""
+            
+            quiz_prompt = PromptTemplate(
+                input_variables=["text", "num_questions", "difficulty"],
+                template=quiz_template
+            )
+            
+            chain = LLMChain(llm=self.llm, prompt=quiz_prompt)
+            result = chain.run(text=combined_text, num_questions=num_questions, difficulty=difficulty)
+            
+            # Sanitize the result before returning
+            sanitized_result = sanitize_quiz_content(result)
+            
+            return {"result": sanitized_result}
+                
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_path) 
