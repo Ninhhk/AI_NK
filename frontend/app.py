@@ -218,6 +218,5 @@ st.markdown("""
     <div style='height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent);'></div>
     <div class="footer fade-in">
         <p style='margin: 0.5em 0;'>Powered by AI Technology | Made with ❤️</p>
-        <p style='margin: 0.5em 0;'>Để được hỗ trợ, liên hệ: support@ainvcb.com</p>
     </div>
 """, unsafe_allow_html=True)

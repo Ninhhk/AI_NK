@@ -104,18 +104,19 @@ class SlideGenerationService:
     }}
 ]
 
-Rules:
-1. The response must be valid JSON
-2. No text should precede or follow the JSON array
-3. The first slide must be a title slide with is_title_slide="yes"
-4. Each subsequent slide must have title_text and text fields
-5. Content should be concise and use bullet points
-6. No markdown formatting or explanatory text
-7. Maximum 5 bullet points per slide
-8. Each bullet point should be limited to 10 words
-9. Use \\n for line breaks in text content
-10. DO NOT use any Chinese characters
-11. Use only Vietnamese or English characters
+RULES:
+1. You MUST create exactly {num_slides} slides total (including title slide)
+2. The response must be valid JSON
+3. No text should precede or follow the JSON array
+4. The first slide must be a title slide with is_title_slide="yes"
+5. Each subsequent slide must have title_text and text fields
+6. Content should be concise and use bullet points
+7. No markdown formatting or explanatory text
+8. Maximum 5 bullet points per slide
+9. Each bullet point should be limited to 10 words
+10. Use \\n for line breaks in text content
+11. DO NOT use any Chinese characters
+12. Use only Vietnamese or English characters
 
 Example response:
 [
@@ -224,4 +225,4 @@ Example response:
             
         except Exception as e:
             logger.error(f"Failed to save slides: {str(e)}")
-            raise 
+            raise

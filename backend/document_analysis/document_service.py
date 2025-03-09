@@ -37,16 +37,16 @@ def sanitize_text(text: str) -> str:
 
 def sanitize_quiz_content(content: str) -> str:
     """Sanitize quiz content and ensure proper formatting."""
-    # First remove any Chinese characters while preserving structure
+    # Only remove actual Chinese characters while preserving Vietnamese diacritics
     lines = content.split('\n')
     sanitized_lines = []
     
     for line in lines:
-        # Skip completely empty lines
         if not line.strip():
+            sanitized_lines.append('')
             continue
             
-        # Remove Chinese characters from the line
+        # Remove only Chinese characters (not Vietnamese with diacritics)
         cleaned_line = ''.join(char for char in line if not is_chinese(char))
         cleaned_line = cleaned_line.strip()
         
@@ -54,9 +54,9 @@ def sanitize_quiz_content(content: str) -> str:
             continue
             
         # Format based on line type
-        if cleaned_line.startswith('Câu'):
+        if re.match(r'^Câu\s+\d+', cleaned_line):
             sanitized_lines.extend(['', cleaned_line])  # Add blank line before question
-        elif cleaned_line.startswith(('A.', 'B.', 'C.', 'D.')):
+        elif re.match(r'^[A-D]\.', cleaned_line):
             sanitized_lines.append(cleaned_line)
         elif 'Đáp án đúng:' in cleaned_line:
             sanitized_lines.extend([cleaned_line, ''])  # Add blank line after answer
@@ -163,7 +163,7 @@ Tóm tắt:"""
                 
                 qa_template = """Answer the following question in Vietnamese based on the provided context.
 Provide a detailed and accurate response.
-MPORTANT: YOU MUST RESPOND IN VIETNAMESE LANGUAGE ONLY.
+IMPORTANT: YOU MUST RESPOND IN VIETNAMESE LANGUAGE ONLY.
 Context:
 {context}
 
@@ -219,26 +219,25 @@ Answer:"""
             # Combine all text content
             combined_text = "\n\n".join([doc.page_content for doc in texts])
             
-            quiz_template = """Generate a quiz with {num_questions} questions based on the following text. 
-For each question, provide multiple-choice options and indicate the correct answer.
+            quiz_template = """Generate a quiz with exactly {num_questions} multiple-choice questions based on the following text.
 IMPORTANT: YOU MUST RESPOND IN VIETNAMESE LANGUAGE ONLY. DO NOT USE ANY CHINESE CHARACTERS.
 
-Hãy tạo bài kiểm tra với {num_questions} câu hỏi dựa trên văn bản sau đây.
-Đối với mỗi câu hỏi, hãy cung cấp các lựa chọn trắc nghiệm và chỉ ra câu trả lời đúng.
+Hãy tạo một bài kiểm tra với đúng {num_questions} câu hỏi trắc nghiệm dựa trên văn bản sau đây.
+Đối với mỗi câu hỏi, hãy cung cấp đúng 4 lựa chọn trắc nghiệm và chỉ ra câu trả lời đúng.
 QUAN TRỌNG: CHỈ SỬ DỤNG TIẾNG VIỆT, KHÔNG DÙNG CHỮ HÁN.
 
 Văn bản:
 {text}
 
 Yêu cầu:
-1. Tạo {num_questions} câu hỏi trắc nghiệm
+1. Tạo CHÍNH XÁC {num_questions} câu hỏi trắc nghiệm
 2. Mỗi câu hỏi phải có 4 lựa chọn (A, B, C, D)
 3. Chỉ rõ đáp án đúng cho mỗi câu hỏi
 4. Độ khó: {difficulty} (dễ/trung bình/khó)
 5. Tất cả nội dung phải bằng tiếng Việt
 6. KHÔNG ĐƯỢC DÙNG CHỮ HÁN
 
-Định dạng:
+Định dạng chuẩn (phải tuân theo chính xác):
 Câu 1: [Nội dung câu hỏi]
 A. [Lựa chọn A]
 B. [Lựa chọn B]
@@ -246,22 +245,58 @@ C. [Lựa chọn C]
 D. [Lựa chọn D]
 Đáp án đúng: [A/B/C/D]
 
-[Lặp lại cho các câu hỏi tiếp theo]
+Câu 2: [Nội dung câu hỏi]
+A. [Lựa chọn A]
+B. [Lựa chọn B]
+C. [Lựa chọn C]
+D. [Lựa chọn D]
+Đáp án đúng: [A/B/C/D]
+
+[Và cứ tiếp tục cho đến khi đủ {num_questions} câu hỏi]
+
+QUAN TRỌNG: Phải đảm bảo tạo đúng {num_questions} câu hỏi, không thiếu không thừa.
 """
-            
+        
             quiz_prompt = PromptTemplate(
                 input_variables=["text", "num_questions", "difficulty"],
                 template=quiz_template
             )
             
-            chain = LLMChain(llm=self.llm, prompt=quiz_prompt)
-            result = chain.run(text=combined_text, num_questions=num_questions, difficulty=difficulty)
+            # Adjust temperature based on the model's requirements
+            self.llm.temperature = max(0.1, min(self.temperature, 0.7))  # Ensure temperature is in a good range
             
-            # Sanitize the result before returning
-            sanitized_result = sanitize_quiz_content(result)
+            # For longer outputs, we might need to make multiple attempts
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    chain = LLMChain(llm=self.llm, prompt=quiz_prompt)
+                    result = chain.run(
+                        text=combined_text[:15000],  # Limit context size to avoid token limits
+                        num_questions=num_questions,
+                        difficulty=difficulty
+                    )
+                    
+                    # Verify we have the expected number of questions
+                    question_count = result.count("Câu ")
+                    if question_count < num_questions:
+                        if attempt < max_attempts - 1:
+                            continue  # Try again if we don't have enough questions
+                        else:
+                            # On final attempt, append a note about incomplete questions
+                            result += f"\n\nChú ý: Chỉ có thể tạo được {question_count}/{num_questions} câu hỏi từ nội dung tài liệu."
+                    
+                    # Sanitize the result before returning
+                    sanitized_result = sanitize_quiz_content(result)
+                    return {"result": sanitized_result}
+                    
+                except Exception as e:
+                    if attempt == max_attempts - 1:
+                        raise e  # Re-raise on last attempt
+                    # Otherwise try again
             
-            return {"result": sanitized_result}
-                
+            # If all attempts failed but didn't raise an exception
+            return {"result": "Không thể tạo bài kiểm tra. Vui lòng thử lại."}
+        
         finally:
             # Clean up temporary file
-            os.unlink(temp_path) 
+            os.unlink(temp_path)

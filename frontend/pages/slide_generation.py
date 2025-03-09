@@ -119,7 +119,6 @@ if st.button("🚀 Tạo Slide", type="primary"):
             try:
                 start_time = time.time()
                 result = generate_slides(topic, num_slides)
-                status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
                 
                 # Generate filename based on topic and timestamp
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -131,28 +130,47 @@ if st.button("🚀 Tạo Slide", type="primary"):
                 output_dir = os.path.join("output", "slides")
                 pptx_path = os.path.join(output_dir, filename)
                 
-                # Download PowerPoint if file exists
-                if os.path.exists(pptx_path):
+                # Wait a short time for the file to be created
+                max_attempts = 10
+                file_found = False
+                
+                for attempt in range(max_attempts):
+                    if os.path.exists(pptx_path):
+                        file_found = True
+                        break
+                    time.sleep(0.5)  # Wait 0.5 seconds between checks
+                
+                if file_found:
+                    status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
+                    
+                    # Show download button with better styling
                     st.markdown("""
                         <div class="stDownloadButton">
                     """, unsafe_allow_html=True)
+                    
                     with open(pptx_path, "rb") as f:
-                        st.download_button(
-                            label="📥 Tải PowerPoint",
-                            data=f,
-                            file_name=filename,
-                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                        )
+                        file_data = f.read()
+                        
+                    st.download_button(
+                        label="📥 Tải PowerPoint",
+                        data=file_data,
+                        file_name=filename,
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    )
+                    
                     st.markdown("</div>", unsafe_allow_html=True)
-                
-                # Performance metrics with better styling
-                st.markdown(f"""
-                    <div class="card fade-in" style='margin-top: 1rem;'>
-                        <p style='margin: 0; color: var(--text-primary);'>
-                            <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start_time:.2f} giây
-                        </p>
-                    </div>
-                """, unsafe_allow_html=True)
+                    
+                    # Performance metrics with better styling
+                    st.markdown(f"""
+                        <div class="card fade-in" style='margin-top: 1rem;'>
+                            <p style='margin: 0; color: var(--text-primary);'>
+                                <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start_time:.2f} giây
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    status.update(label="⚠️ Đã tạo slide nhưng không tìm thấy file", state="error", expanded=False)
+                    st.error(f"⚠️ Không thể tìm thấy file {filename}. Vui lòng thử lại.")
                 
             except Exception as e:
                 status.update(label="❌ Lỗi", state="error", expanded=False)
