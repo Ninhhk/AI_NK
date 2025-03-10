@@ -107,6 +107,7 @@ To update the application to the latest version, follow these steps:
 
 2. Update dependencies:
    ```bash
+   poetry lock
    poetry install
    ```
 
