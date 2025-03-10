@@ -96,6 +96,30 @@ AI_NVCB/
 4. Access the application in your browser at http://localhost:8501
 5. You may have to wait 1-2m for the backend server complete its startup.
 
+## Updating the Application
+
+To update the application to the latest version, follow these steps:
+
+1. Pull the latest changes from the repository:
+   ```bash
+   git pull origin main
+   ```
+
+2. Update dependencies:
+   ```bash
+   poetry install
+   ```
+
+3. Restart the backend server:
+   ```bash
+   python run_backend.py
+   ```
+
+4. Restart the frontend application:
+   ```bash
+   streamlit run frontend/app.py
+   ```
+
 ## Development
 
 - Use Poetry for dependency management
@@ -104,7 +128,6 @@ AI_NVCB/
 
 ## License
 
-<<<<<<< HEAD
 MIT License - See LICENSE file for details
 
 ## Vietnamese Translation / Bản dịch tiếng Việt
@@ -196,6 +219,30 @@ AI_NVCB/
 4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
 5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
 
+## Cập nhật ứng dụng
+
+Để cập nhật ứng dụng lên phiên bản mới nhất, hãy làm theo các bước sau:
+
+1. Kéo các thay đổi mới nhất từ ​​kho lưu trữ:
+```bash
+git pull origin main
+```
+
+2. Cập nhật các phụ thuộc:
+```bash
+poetry install
+```
+
+3. Khởi động lại máy chủ phụ trợ:
+```bash
+python run_backend.py
+```
+
+4. Khởi động lại ứng dụng giao diện:
+```bash
+streamlit run frontend/app.py
+```
+
 ## Phát triển
 
 - Sử dụng Poetry để quản lý phụ thuộc
@@ -205,6 +252,3 @@ AI_NVCB/
 ## Giấy phép
 
 Giấy phép MIT - Xem tệp LICENSE để biết chi tiết
-=======
-MIT License - See LICENSE file for details 
->>>>>>> 534bf6eee10a45a0673dcf39ba6679f4c15b9472
