@@ -169,8 +169,8 @@ if st.button("🚀 Tạo Slide", type="primary"):
                         </div>
                     """, unsafe_allow_html=True)
                 else:
-                    status.update(label="⚠️ Đã tạo slide nhưng không tìm thấy file", state="error", expanded=False)
-                    st.error(f"⚠️ Không thể tìm thấy file {filename}. Vui lòng thử lại.")
+                    status.update(label="⚠️ Đã tạo slide nhưng tên file có thể quá dài để hiển thị, tìm file trong /output/sildes", state="error", expanded=False)
+                    st.error(f"⚠️ Không thể tìm thấy file {filename} do tên quá dài. Vui lòng tìm file trong /output/sildes.")
                 
             except Exception as e:
                 status.update(label="❌ Lỗi", state="error", expanded=False)
