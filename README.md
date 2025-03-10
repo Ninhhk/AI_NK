@@ -223,13 +223,14 @@ AI_NVCB/
 
 Để cập nhật ứng dụng lên phiên bản mới nhất, hãy làm theo các bước sau:
 
-1. Kéo các thay đổi mới nhất từ ​​kho lưu trữ:
+1. Kéo các thay đổi mới nhất từ ​repo:
 ```bash
 git pull origin main
 ```
 
 2. Cập nhật các phụ thuộc:
 ```bash
+poetry lock
 poetry install
 ```
 
