@@ -33,6 +33,14 @@ async def analyze_document(
     
     return result
 
+@router.get("/chat-history/{document_id}")
+async def get_chat_history(document_id: str) -> Dict[str, Any]:
+    """
+    Retrieve chat history for a specific document.
+    """
+    chat_history = document_service.get_chat_history(document_id)
+    return {"history": chat_history}
+
 @router.post("/generate-quiz")
 async def generate_quiz(
     file: UploadFile = File(...),

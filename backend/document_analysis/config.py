@@ -13,4 +13,12 @@ CHUNK_OVERLAP = 200
 MAX_TOKENS = 4000
 
 # Supported File Types
-SUPPORTED_FILE_TYPES = [".pdf", ".txt", ".doc", ".docx"] 
+SUPPORTED_FILE_TYPES = [".pdf", ".txt", ".doc", ".docx"]
+
+# Chat History Settings
+CHAT_HISTORY_ENABLED = True
+MAX_CHAT_HISTORY_ITEMS = 50
+
+# Language Settings
+FORCE_VIETNAMESE = True
+LANGUAGE_DETECTION_CONFIDENCE = 0.7  # Minimum confidence for language detection 

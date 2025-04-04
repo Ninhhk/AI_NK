@@ -76,25 +76,44 @@ AI_NVCB/
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
-## Usage
+## Cách sử dụng
 
-1. Start Ollama server and ensure your model is available:
+1. Khởi động Ollama server và đảm bảo mô hình của bạn khả dụng:
    ```bash
    ollama run qwen2.5:7b
    ```
-   Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+D to exit.
+   Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 
-2. Start the backend server:
+2. **Cách 1: Sử dụng script all-in-one (khuyến nghị):**
    ```bash
-   python run_backend.py
+   # Cho Linux/macOS:
+   chmod +x update_and_run.sh
+   ./update_and_run.sh
+   
+   # Cho Windows:
+   update_and_run.bat
+   
+   # Sử dụng Python (đa nền tảng):
+   python update_and_run.py
    ```
-   Wait until the application finished startup.
-3. Start the frontend application:
+   Script này sẽ tự động:
+   - Kéo các thay đổi mới nhất từ git
+   - Cập nhật các phụ thuộc Poetry
+   - Khởi động cả máy chủ backend và frontend
+   - Cung cấp URL để truy cập ứng dụng
+
+3. **Cách 2: Khởi động các dịch vụ riêng lẻ:**
    ```bash
+   # Khởi động máy chủ backend:
+   python run_backend.py
+   
+   # Trong một terminal mới, khởi động frontend:
    streamlit run frontend/app.py
    ```
-4. Access the application in your browser at http://localhost:8501
-5. You may have to wait 1-2m for the backend server complete its startup.
+
+4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
+
+5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
 
 ## Updating the Application
 
@@ -199,25 +218,43 @@ AI_NVCB/
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
-## Sử dụng
+## Cách sử dụng
 
-1. Khởi động máy chủ Ollama và đảm bảo mô hình của bạn có sẵn:
+1. Khởi động Ollama server và đảm bảo mô hình của bạn khả dụng:
    ```bash
    ollama run qwen2.5:7b
    ```
    Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 
-2. Khởi động máy chủ backend:
+2. **Cách 1: Sử dụng script all-in-one (khuyến nghị):**
    ```bash
-   python run_backend.py
+   # Cho Linux/macOS:
+   chmod +x update_and_run.sh
+   ./update_and_run.sh
+   
+   # Cho Windows:
+   update_and_run.bat
+   
+   # Sử dụng Python (đa nền tảng):
+   python update_and_run.py
    ```
+   Script này sẽ tự động:
+   - Kéo các thay đổi mới nhất từ git
+   - Cập nhật các phụ thuộc Poetry
+   - Khởi động cả máy chủ backend và frontend
+   - Cung cấp URL để truy cập ứng dụng
 
-3. Khởi động ứng dụng frontend trên một terminal khác (Ctrl+Shift+5 trong VSCode):
+3. **Cách 2: Khởi động các dịch vụ riêng lẻ:**
    ```bash
+   # Khởi động máy chủ backend:
+   python run_backend.py
+   
+   # Trong một terminal mới, khởi động frontend:
    streamlit run frontend/app.py
    ```
 
 4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
+
 5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
 
 ## Cập nhật ứng dụng
