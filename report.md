@@ -1,42 +1,4 @@
-I'll examine the repository and create a comprehensive document about the application following your outline. Let me start by exploring the codebase.
-
-Ran tool
-Let's look at the README.md file to understand the application better:
-
-Read file: README.md
-Now let's look at the structure of the backend:
-
-Ran tool
-Let's examine the frontend structure:
-
-Ran tool
-Let's look at the main frontend app:
-
-Read file: frontend/app.py
-Let's check the frontend pages:
-
-Ran tool
-Now let's check the backend document analysis module:
-
-Ran tool
-Let's examine the document service:
-
-Read file: backend/document_analysis/document_service.py
-Now let's check the slide generation module:
-
-Ran tool
-Let's examine the slide service:
-
-Read file: backend/slide_generation/slide_service.py
-Let's examine the PowerPoint generator:
-
-Read file: backend/slide_generation/pptx_generator.py
-Let's examine the structure of the frontend pages:
-
-Read file: frontend/pages/document_analysis.py
-Based on the examination of the codebase, I'll now create a comprehensive documentation following your outline.
-
-# ĐỒ ÁN: ỨNG DỤNG PHÂN TÍCH TÀI LIỆU VÀ TẠO BÀI THUYẾT TRÌNH AI_NVCB
+# ỨNG DỤNG PHÂN TÍCH TÀI LIỆU VÀ TẠO BÀI THUYẾT TRÌNH AI_NVCB
 
 ## Chương 1: Giới thiệu đề tài
 
