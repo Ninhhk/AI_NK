@@ -76,48 +76,64 @@ AI_NVCB/
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
-## Cách sử dụng
+## Usage
 
-1. Khởi động Ollama server và đảm bảo mô hình của bạn khả dụng:
+1. Start Ollama server and ensure your model is available:
    ```bash
    ollama run qwen2.5:7b
    ```
-   Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
+   Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+D to exit.
 
-2. **Cách 1: Sử dụng script all-in-one (khuyến nghị):**
+2. Start the backend server:
    ```bash
-   # Cho Linux/macOS:
-   chmod +x update_and_run.sh
-   ./update_and_run.sh
-   
-   # Cho Windows:
-   update_and_run.bat
-   
-   # Sử dụng Python (đa nền tảng):
-   python update_and_run.py
-   ```
-   Script này sẽ tự động:
-   - Kéo các thay đổi mới nhất từ git
-   - Cập nhật các phụ thuộc Poetry
-   - Khởi động cả máy chủ backend và frontend
-   - Cung cấp URL để truy cập ứng dụng
-
-3. **Cách 2: Khởi động các dịch vụ riêng lẻ:**
-   ```bash
-   # Khởi động máy chủ backend:
    python run_backend.py
-   
-   # Trong một terminal mới, khởi động frontend:
+   ```
+   Wait until the application finished startup.
+3. Start the frontend application:
+   ```bash
    streamlit run frontend/app.py
    ```
-
-4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
-
-5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
+4. Access the application in your browser at http://localhost:8501
+5. You may have to wait 1-2m for the backend server complete its startup.
 
 ## Updating the Application
 
-To update the application to the latest version, follow these steps:
+To update the application to the latest version, you can use our automated update scripts or follow the manual steps.
+
+### Using the Update Scripts (Recommended)
+
+We've created convenient scripts to automate the update process:
+
+1. **On Windows**: Simply run the `update_project.bat` script
+   ```cmd
+   update_project.bat
+   ```
+
+2. **On macOS/Linux**: Make the shell script executable if needed, then run it
+   ```bash
+   chmod +x update_project.sh
+   ./update_project.sh
+   ```
+
+These scripts will automatically:
+- Pull the latest changes from git
+- Update poetry dependencies
+- Perform basic dependency tests
+
+After the update completes, restart your servers:
+```bash
+python run_backend.py
+```
+And in a separate terminal:
+```bash
+streamlit run frontend/app.py
+```
+
+For more options and troubleshooting, see [README_UPDATE.md](README_UPDATE.md).
+
+### Manual Update Steps
+
+If you prefer to update manually, follow these steps:
 
 1. Pull the latest changes from the repository:
    ```bash
@@ -218,50 +234,67 @@ AI_NVCB/
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
-## Cách sử dụng
+## Sử dụng
 
-1. Khởi động Ollama server và đảm bảo mô hình của bạn khả dụng:
+1. Khởi động máy chủ Ollama và đảm bảo mô hình của bạn có sẵn:
    ```bash
    ollama run qwen2.5:7b
    ```
    Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 
-2. **Cách 1: Sử dụng script all-in-one (khuyến nghị):**
+2. Khởi động máy chủ backend:
    ```bash
-   # Cho Linux/macOS:
-   chmod +x update_and_run.sh
-   ./update_and_run.sh
-   
-   # Cho Windows:
-   update_and_run.bat
-   
-   # Sử dụng Python (đa nền tảng):
-   python update_and_run.py
-   ```
-   Script này sẽ tự động:
-   - Kéo các thay đổi mới nhất từ git
-   - Cập nhật các phụ thuộc Poetry
-   - Khởi động cả máy chủ backend và frontend
-   - Cung cấp URL để truy cập ứng dụng
-
-3. **Cách 2: Khởi động các dịch vụ riêng lẻ:**
-   ```bash
-   # Khởi động máy chủ backend:
    python run_backend.py
-   
-   # Trong một terminal mới, khởi động frontend:
+   ```
+
+3. Khởi động ứng dụng frontend trên một terminal khác (Ctrl+Shift+5 trong VSCode):
+   ```bash
    streamlit run frontend/app.py
    ```
 
 4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
-
 5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
 
 ## Cập nhật ứng dụng
 
-Để cập nhật ứng dụng lên phiên bản mới nhất, hãy làm theo các bước sau:
+Để cập nhật ứng dụng lên phiên bản mới nhất, bạn có thể sử dụng các script cập nhật tự động hoặc thực hiện các bước thủ công.
 
-1. Kéo các thay đổi mới nhất từ ​repo:
+### Sử dụng Script Cập nhật (Khuyến nghị)
+
+Chúng tôi đã tạo các script tiện lợi để tự động hóa quá trình cập nhật:
+
+1. **Trên Windows**: Chỉ cần chạy script `update_project.bat`
+   ```cmd
+   update_project.bat
+   ```
+
+2. **Trên macOS/Linux**: Làm cho script có quyền thực thi nếu cần, sau đó chạy nó
+   ```bash
+   chmod +x update_project.sh
+   ./update_project.sh
+   ```
+
+Các script này sẽ tự động:
+- Kéo các thay đổi mới nhất từ git
+- Cập nhật các phụ thuộc poetry
+- Thực hiện kiểm tra các phụ thuộc cơ bản
+
+Sau khi cập nhật hoàn tất, khởi động lại các máy chủ:
+```bash
+python run_backend.py
+```
+Và trong một terminal khác:
+```bash
+streamlit run frontend/app.py
+```
+
+Để biết thêm tùy chọn và cách khắc phục sự cố, xem [README_UPDATE.md](README_UPDATE.md).
+
+### Các Bước Cập nhật Thủ công
+
+Nếu bạn thích cập nhật thủ công, hãy làm theo các bước sau:
+
+1. Kéo các thay đổi mới nhất từ kho lưu trữ:
 ```bash
 git pull origin main
 ```
@@ -272,12 +305,12 @@ poetry lock
 poetry install
 ```
 
-3. Khởi động lại máy chủ phụ trợ:
+3. Khởi động lại máy chủ backend:
 ```bash
 python run_backend.py
 ```
 
-4. Khởi động lại ứng dụng giao diện:
+4. Khởi động lại ứng dụng frontend:
 ```bash
 streamlit run frontend/app.py
 ```
