@@ -2,40 +2,6 @@
 :: Script to update, install dependencies, and run the AI NVCB application
 echo AI NVCB - Update and Run Script
 
-:: Store process IDs
-set BACKEND_PID=
-set FRONTEND_PID=
-
-:: Function to clean up processes on exit
-:cleanup
-    echo.
-    echo ==== Shutting down servers ====
-    
-    if defined BACKEND_PID (
-        echo Terminating backend server
-        taskkill /PID %BACKEND_PID% /F > nul 2>&1
-    )
-    
-    if defined FRONTEND_PID (
-        echo Terminating frontend server
-        taskkill /PID %FRONTEND_PID% /F > nul 2>&1
-    )
-    
-    echo All processes terminated.
-    exit /b 0
-
-:: Function to run a command and handle errors
-:run_command
-    echo [Running] %~1
-    %~1
-    if %ERRORLEVEL% neq 0 (
-        echo [Error] Command failed: %~1
-        exit /b 1
-    ) else (
-        echo [Success] %~1
-        exit /b 0
-    )
-
 :: Step 1: Update git repository if it exists
 echo.
 echo ==== Checking repository ====
@@ -71,35 +37,32 @@ if %ERRORLEVEL% neq 0 (
     goto :exit
 )
 
-:: Step 3: Start the backend server
+:: Step 3: Start the backend server in a new terminal window
 echo.
-echo ==== Starting backend server ====
-start /B "" python run_backend.py
-for /f "tokens=2" %%a in ('tasklist /NH /FI "IMAGENAME eq python.exe" ^| find "python"') do set BACKEND_PID=%%a
-echo Backend server started
+echo ==== Starting backend server in new terminal ====
+start "Backend Server" cmd /k "python run_backend.py"
+echo Backend server started in new terminal window.
 
 :: Wait for backend to initialize
 echo Waiting for backend to initialize...
 timeout /t 5 /nobreak > nul
 
-:: Step 4: Start the frontend server
+:: Step 4: Start the frontend server in a new terminal window
 echo.
-echo ==== Starting frontend server ====
-start /B "" streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0
-for /f "tokens=2" %%a in ('tasklist /NH /FI "IMAGENAME eq streamlit.exe" ^| find "streamlit"') do set FRONTEND_PID=%%a
-echo Frontend server started
+echo ==== Starting frontend server in new terminal ====
+start "Frontend Server" cmd /k "streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0"
+echo Frontend server started in new terminal window.
 
 echo.
 echo ==== Application started successfully ====
 echo Backend server running at: http://localhost:8000
 echo Frontend available at: http://localhost:8501
-echo Press Ctrl+C to stop all servers, or close this window.
-
 echo.
-echo The application is now running. This window must remain open.
-echo Press any key to stop all servers and exit.
+echo The application is now running in separate terminal windows.
+echo You can close each window individually to stop the services.
+echo.
+echo Press any key to exit this launcher...
 pause > nul
 
 :exit
-call :cleanup
 exit /b 
