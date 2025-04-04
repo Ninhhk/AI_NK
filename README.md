@@ -84,17 +84,16 @@ AI_NVCB/
    ```
    Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+D to exit.
 
-2. Start the backend server:
+2. Start the backend and frontend (in separate terminals):
    ```bash
+   # Terminal 1: Backend
    python run_backend.py
+
+   # Terminal 2: Frontend
+   python run_frontend.py
    ```
-   Wait until the application finished startup.
-3. Start the frontend application:
-   ```bash
-   streamlit run frontend/app.py
-   ```
-4. Access the application in your browser at http://localhost:8501
-5. You may have to wait 1-2m for the backend server complete its startup.
+
+3. Access the application in your browser at http://localhost:8501
 
 ## Updating the Application
 
@@ -122,11 +121,11 @@ These scripts will automatically:
 
 After the update completes, restart your servers:
 ```bash
+# Terminal 1
 python run_backend.py
-```
-And in a separate terminal:
-```bash
-streamlit run frontend/app.py
+
+# Terminal 2
+python run_frontend.py
 ```
 
 For more options and troubleshooting, see [README_UPDATE.md](README_UPDATE.md).
@@ -242,18 +241,17 @@ AI_NVCB/
    ```
    Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 
-2. Khởi động máy chủ backend:
+2. Khởi động backend và frontend (trong các terminal riêng biệt)(Ctrl+Shift+5 trong VSCode):
    ```bash
+   # Terminal 1: Backend
    python run_backend.py
+
+   # Terminal 2: Frontend
+   python run_frontend.py
    ```
 
-3. Khởi động ứng dụng frontend trên một terminal khác (Ctrl+Shift+5 trong VSCode):
-   ```bash
-   streamlit run frontend/app.py
-   ```
+3. Truy cập ứng dụng tại http://localhost:8501
 
-4. Truy cập ứng dụng trong trình duyệt của bạn tại http://localhost:8501
-5. Bạn có thể sẽ phải chờ 1-2p để backend hoàn thành việc khởi chạy.
 
 ## Cập nhật ứng dụng
 
@@ -281,11 +279,11 @@ Các script này sẽ tự động:
 
 Sau khi cập nhật hoàn tất, khởi động lại các máy chủ:
 ```bash
+# Terminal 1
 python run_backend.py
-```
-Và trong một terminal khác:
-```bash
-streamlit run frontend/app.py
+
+# Terminal 2
+python run_frontend.py
 ```
 
 Để biết thêm tùy chọn và cách khắc phục sự cố, xem [README_UPDATE.md](README_UPDATE.md).

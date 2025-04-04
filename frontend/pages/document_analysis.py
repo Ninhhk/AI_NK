@@ -3,6 +3,7 @@ import requests
 import time
 from typing import Optional
 import json
+import pkg_resources
 
 # Set page config for better appearance
 st.set_page_config(
@@ -50,15 +51,75 @@ def get_chat_history(document_id: str) -> dict:
     response.raise_for_status()
     return response.json()
 
+def load_chat_history():
+    """Load chat history and store in session state"""
+    if st.session_state.document_id:
+        try:
+            history_data = get_chat_history(st.session_state.document_id)
+            st.session_state.chat_history = history_data.get("history", [])
+            st.session_state.chat_history_last_loaded = time.time()
+            return True
+        except requests.exceptions.ConnectionError:
+            if st.session_state.debug_mode:
+                st.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra xem máy chủ backend đã được khởi động chưa.")
+            else:
+                st.error("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.")
+            return False
+        except requests.exceptions.HTTPError as e:
+            if st.session_state.debug_mode:
+                st.error(f"Lỗi HTTP khi tải lịch sử trò chuyện: {e}")
+            if "404" in str(e):
+                st.warning("API endpoint cho lịch sử trò chuyện không tồn tại. Vui lòng cập nhật mã nguồn backend.")
+            return False
+        except Exception as e:
+            if st.session_state.debug_mode:
+                st.error(f"Lỗi khi tải lịch sử trò chuyện: {e}")
+            return False
+    return False
+
 def format_timestamp(timestamp: float) -> str:
     """Format Unix timestamp to a readable format."""
     from datetime import datetime
     dt = datetime.fromtimestamp(timestamp)
     return dt.strftime("%H:%M:%S")
 
-# Initialize session state for document ID
+def get_streamlit_version():
+    """Get the installed Streamlit version."""
+    try:
+        return pkg_resources.get_distribution("streamlit").version
+    except:
+        return "unknown"
+
+def refresh_page():
+    """Refresh the page using the appropriate Streamlit method based on version compatibility."""
+    streamlit_version = get_streamlit_version()
+    
+    # Log version for debugging
+    if st.session_state.get('debug_mode', False):
+        st.info(f"Streamlit version: {streamlit_version}")
+    
+    try:
+        # For Streamlit >= 1.27.0
+        if streamlit_version != "unknown" and tuple(map(int, streamlit_version.split('.')[:2])) >= (1, 27):
+            st.rerun()
+        else:
+            # For older versions
+            st.experimental_rerun()
+    except Exception as e:
+        # Fallback message if both methods fail
+        st.warning(f"Không thể làm mới trang tự động. Vui lòng làm mới trang thủ công. (Lỗi: {e})")
+
+# Initialize session state variables
 if 'document_id' not in st.session_state:
     st.session_state.document_id = None
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+if 'chat_history_last_loaded' not in st.session_state:
+    st.session_state.chat_history_last_loaded = 0
+
+# Debug mode flag - set to True to enable debug information
+if 'debug_mode' not in st.session_state:
+    st.session_state.debug_mode = False  # Change to True for debugging
 
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
@@ -171,6 +232,11 @@ with tab1:
                     # Store document_id for chat history
                     if "document_id" in result:
                         st.session_state.document_id = result["document_id"]
+                        # If this was a QA query, reload chat history
+                        if query_type == "qa":
+                            # Add a slight delay to allow the backend to update
+                            time.sleep(0.5)
+                            load_chat_history()
                     
                 except Exception as e:
                     status.update(label="❌ Lỗi", state="error", expanded=False)
@@ -207,51 +273,59 @@ with tab2:
     
     # Check if we have a document ID
     if st.session_state.document_id:
-        # Add refresh button for chat history
+        # Add refresh button for chat history - manually call the load function
         if st.button("🔄 Làm mới lịch sử", key="refresh_history"):
-            st.experimental_rerun()
+            # Load chat history into session state
+            success = load_chat_history()
+            if success and st.session_state.debug_mode:
+                st.success("Lịch sử trò chuyện đã được làm mới!")
             
-        try:
-            history_data = get_chat_history(st.session_state.document_id)
-            chat_history = history_data.get("history", [])
+        # Load chat history if not already loaded
+        if not st.session_state.chat_history or time.time() - st.session_state.chat_history_last_loaded > 30:
+            load_chat_history()
             
-            if not chat_history:
-                st.info("Chưa có cuộc trò chuyện nào với tài liệu này.")
-            else:
-                # Display chat history in reverse order (newest first)
-                for chat in reversed(chat_history):
-                    # Chat container with user question and system response
-                    st.markdown("""
-                        <div class="card fade-in" style="margin-bottom: 1rem; padding: 1rem;">
-                    """, unsafe_allow_html=True)
-                    
-                    # User question
-                    st.markdown(f"""
-                        <div style="margin-bottom: 1rem;">
-                            <p style="color: var(--accent-color); font-weight: bold; margin-bottom: 0.5rem;">
-                                🙋 Câu hỏi ({format_timestamp(chat["timestamp"])})
-                            </p>
-                            <div style="background-color: rgba(52, 152, 219, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--accent-color);">
-                                <p style="margin: 0; color: var(--text-primary);">{chat["user_query"]}</p>
-                            </div>
+        # Display debug info if needed
+        if st.session_state.debug_mode:
+            st.info(f"Phiên bản Streamlit: {get_streamlit_version()}")
+            st.info(f"Đã tải {len(st.session_state.chat_history)} tin nhắn từ lịch sử trò chuyện.")
+            st.info(f"Lần cuối cập nhật: {format_timestamp(st.session_state.chat_history_last_loaded)}")
+        
+        # Display chat history from session state
+        if not st.session_state.chat_history:
+            st.info("Chưa có cuộc trò chuyện nào với tài liệu này.")
+        else:
+            # Display chat history in reverse order (newest first)
+            for chat in reversed(st.session_state.chat_history):
+                # Chat container with user question and system response
+                st.markdown("""
+                    <div class="card fade-in" style="margin-bottom: 1rem; padding: 1rem;">
+                """, unsafe_allow_html=True)
+                
+                # User question
+                st.markdown(f"""
+                    <div style="margin-bottom: 1rem;">
+                        <p style="color: var(--accent-color); font-weight: bold; margin-bottom: 0.5rem;">
+                            🙋 Câu hỏi ({format_timestamp(chat["timestamp"])})
+                        </p>
+                        <div style="background-color: rgba(52, 152, 219, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--accent-color);">
+                            <p style="margin: 0; color: var(--text-primary);">{chat["user_query"]}</p>
                         </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # System response
-                    st.markdown(f"""
-                        <div>
-                            <p style="color: var(--primary-color); font-weight: bold; margin-bottom: 0.5rem;">
-                                🤖 Trả lời
-                            </p>
-                            <div style="background-color: rgba(31, 119, 180, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--primary-color);">
-                                <p style="margin: 0; color: var(--text-primary);">{chat["system_response"]}</p>
-                            </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # System response
+                st.markdown(f"""
+                    <div>
+                        <p style="color: var(--primary-color); font-weight: bold; margin-bottom: 0.5rem;">
+                            🤖 Trả lời
+                        </p>
+                        <div style="background-color: rgba(31, 119, 180, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--primary-color);">
+                            <p style="margin: 0; color: var(--text-primary);">{chat["system_response"]}</p>
                         </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.markdown("</div>", unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Không thể tải lịch sử trò chuyện: {e}")
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("Vui lòng phân tích tài liệu bằng chức năng Q&A trước để có lịch sử trò chuyện.")
 
