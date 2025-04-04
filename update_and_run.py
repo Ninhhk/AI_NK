@@ -12,7 +12,12 @@ import sys
 import subprocess
 import time
 import platform
+import json
 from pathlib import Path
+from colorama import Fore, Style, init
+
+# Initialize colorama for cross-platform colored output
+init()
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.absolute()
@@ -20,7 +25,7 @@ sys.path.append(str(project_root))
 
 def run_command(command, cwd=None, shell=False):
     """Run a command and print its output"""
-    print(f"\n[Running] {command}")
+    print(f"\n{Fore.BLUE}[Running]{Style.RESET_ALL} {command}")
     try:
         result = subprocess.run(
             command,
@@ -30,26 +35,26 @@ def run_command(command, cwd=None, shell=False):
             text=True,
             capture_output=True
         )
-        print(f"[Success] {command}")
+        print(f"{Fore.GREEN}[Success]{Style.RESET_ALL} {command}")
         print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"[Error] {command} failed with exit code {e.returncode}")
+        print(f"{Fore.RED}[Error]{Style.RESET_ALL} {command} failed with exit code {e.returncode}")
         print(f"Error message: {e.stderr}")
         return False
 
 def update_repository():
     """Pull the latest changes from the git repository"""
-    print("\n==== Updating repository ====")
+    print(f"\n{Fore.BLUE}==== Updating repository ===={Style.RESET_ALL}")
     return run_command(["git", "pull"])
 
 def update_dependencies():
     """Update Poetry dependencies"""
-    print("\n==== Updating dependencies ====")
+    print(f"\n{Fore.BLUE}==== Updating dependencies ===={Style.RESET_ALL}")
     
     # Check if pyproject.toml exists
     if not os.path.isfile(os.path.join(project_root, "pyproject.toml")):
-        print("[Error] pyproject.toml not found. Cannot update dependencies.")
+        print(f"{Fore.RED}[Error] pyproject.toml not found. Cannot update dependencies.{Style.RESET_ALL}")
         return False
         
     # Update the lock file
@@ -95,17 +100,17 @@ def open_new_terminal(command, title=None):
             except (subprocess.SubprocessError, FileNotFoundError):
                 continue
                 
-        print("[Warning] Could not find a suitable terminal emulator. Running in background instead.")
+        print(f"{Fore.YELLOW}[Warning] Could not find a suitable terminal emulator. Running in background instead.{Style.RESET_ALL}")
         subprocess.Popen(command, shell=True)
         return False
     else:
-        print(f"[Warning] Unsupported operating system: {system}. Running in background.")
+        print(f"{Fore.YELLOW}[Warning] Unsupported operating system: {system}. Running in background.{Style.RESET_ALL}")
         subprocess.Popen(command, shell=True)
         return False
 
 def run_backend():
     """Run the backend server in a new terminal window"""
-    print("\n==== Starting backend server in new terminal ====")
+    print(f"\n{Fore.BLUE}==== Starting backend server in new terminal ===={Style.RESET_ALL}")
     backend_cmd = f"cd \"{project_root}\" && python run_backend.py"
     success = open_new_terminal(backend_cmd, "Backend Server")
     if success:
@@ -114,30 +119,62 @@ def run_backend():
 
 def run_frontend():
     """Run the Streamlit frontend in a new terminal window"""
-    print("\n==== Starting frontend server in new terminal ====")
+    print(f"\n{Fore.BLUE}==== Starting frontend server in new terminal ===={Style.RESET_ALL}")
     frontend_cmd = f"cd \"{project_root}\" && streamlit run frontend/app.py --server.port=8501 --server.address=0.0.0.0"
     success = open_new_terminal(frontend_cmd, "Frontend Server")
     if success:
         print("Frontend server started in a new terminal window.")
     return success
 
+def print_api_info():
+    """Print information about available API endpoints"""
+    print(f"\n{Fore.GREEN}==== Application started successfully ===={Style.RESET_ALL}")
+    print(f"{Fore.BLUE}Backend API server running at:{Style.RESET_ALL} http://localhost:8000")
+    print(f"{Fore.CYAN}Available API endpoints:{Style.RESET_ALL}")
+    print(f"  - http://localhost:8000/api/documents/analyze {Fore.YELLOW}(POST){Style.RESET_ALL}")
+    print(f"  - http://localhost:8000/api/documents/chat-history/{{document_id}} {Fore.YELLOW}(GET){Style.RESET_ALL}")
+    print(f"  - http://localhost:8000/api/documents/generate-quiz {Fore.YELLOW}(POST){Style.RESET_ALL}")
+    print(f"  - http://localhost:8000/api/documents/health {Fore.YELLOW}(GET){Style.RESET_ALL}")
+    print()
+    print(f"{Fore.BLUE}Frontend UI available at:{Style.RESET_ALL} http://localhost:8501")
+    print()
+    print(f"{Fore.YELLOW}NOTE:{Style.RESET_ALL} The backend doesn't serve a web page at the root URL (http://localhost:8000/).")
+    print("      You should see \"404 Not Found\" if you access that URL directly - this is normal.")
+    print("      The backend health check at http://localhost:8000/api/documents/health should return {\"status\": \"healthy\"}.")
+    
+    curl_cmd = "curl" if platform.system() != "Windows" else "curl.exe"
+    print(f"      You can test it with: {Fore.CYAN}{curl_cmd} http://localhost:8000/api/documents/health{Style.RESET_ALL}")
+    print()
+    print(f"{Fore.GREEN}The application is now running in separate terminal windows.{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}You can close each terminal window individually to stop the services.{Style.RESET_ALL}")
+
 def main():
     try:
+        # Check if colorama is installed, if not, try to install it
+        try:
+            import colorama
+        except ImportError:
+            print("Installing colorama for colored output...")
+            subprocess.run([sys.executable, "-m", "pip", "install", "colorama"], check=True)
+            print("Colorama installed successfully.")
+            from colorama import Fore, Style, init
+            init()
+            
         # Update repository if it's a git repo
         if os.path.isdir(os.path.join(project_root, ".git")):
             if not update_repository():
-                print("Warning: Repository update failed, continuing with local version.")
+                print(f"{Fore.YELLOW}Warning: Repository update failed, continuing with local version.{Style.RESET_ALL}")
         else:
-            print("Warning: Not a git repository, skipping update.")
+            print(f"{Fore.YELLOW}Warning: Not a git repository, skipping update.{Style.RESET_ALL}")
         
         # Update dependencies
         if not update_dependencies():
-            print("Error: Failed to update dependencies.")
+            print(f"{Fore.RED}Error: Failed to update dependencies.{Style.RESET_ALL}")
             return 1
         
         # Start the backend server in a new terminal
         if not run_backend():
-            print("Error: Failed to start backend server.")
+            print(f"{Fore.RED}Error: Failed to start backend server.{Style.RESET_ALL}")
             return 1
         
         # Wait for backend to initialize (5 seconds)
@@ -146,21 +183,18 @@ def main():
         
         # Start the frontend server in a new terminal
         if not run_frontend():
-            print("Error: Failed to start frontend server.")
+            print(f"{Fore.RED}Error: Failed to start frontend server.{Style.RESET_ALL}")
             return 1
         
-        print("\n==== Application started successfully ====")
-        print("Backend server running at: http://localhost:8000")
-        print("Frontend available at: http://localhost:8501")
-        print("Services are running in separate terminal windows.")
-        print("You can close each terminal window individually to stop the services.")
+        # Print API information
+        print_api_info()
         
         # Exit the launcher
-        input("Press Enter to exit this launcher...")
+        input(f"{Fore.YELLOW}Press Enter to exit this launcher...{Style.RESET_ALL}")
         return 0
                 
     except KeyboardInterrupt:
-        print("\nReceived interrupt signal.")
+        print(f"\n{Fore.YELLOW}Received interrupt signal.{Style.RESET_ALL}")
         return 0
     
     return 0

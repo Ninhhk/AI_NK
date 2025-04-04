@@ -55,8 +55,18 @@ echo Frontend server started in new terminal window.
 
 echo.
 echo ==== Application started successfully ====
-echo Backend server running at: http://localhost:8000
-echo Frontend available at: http://localhost:8501
+echo Backend API server running at: http://localhost:8000
+echo Available API endpoints:
+echo  - http://localhost:8000/api/documents/analyze (POST)
+echo  - http://localhost:8000/api/documents/chat-history/{document_id} (GET)
+echo  - http://localhost:8000/api/documents/generate-quiz (POST)
+echo  - http://localhost:8000/api/documents/health (GET)
+echo.
+echo Frontend UI available at: http://localhost:8501
+echo.
+echo NOTE: The backend doesn't serve a web page at the root URL (http://localhost:8000/).
+echo       You should see "404 Not Found" if you access that URL directly - this is normal.
+echo       The backend health check at http://localhost:8000/api/documents/health should return {"status": "healthy"}.
 echo.
 echo The application is now running in separate terminal windows.
 echo You can close each window individually to stop the services.

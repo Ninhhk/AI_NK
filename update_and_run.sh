@@ -6,6 +6,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Function to run a command and handle errors
@@ -144,8 +145,21 @@ esac
 echo "Frontend server started in new terminal window."
 
 echo -e "\n${GREEN}==== Application started successfully ====${NC}"
-echo "Backend server running at: http://localhost:8000"
-echo "Frontend available at: http://localhost:8501"
+echo -e "${BLUE}Backend API server running at:${NC} http://localhost:8000"
+echo -e "${CYAN}Available API endpoints:${NC}"
+echo -e "  - http://localhost:8000/api/documents/analyze ${YELLOW}(POST)${NC}"
+echo -e "  - http://localhost:8000/api/documents/chat-history/{document_id} ${YELLOW}(GET)${NC}"
+echo -e "  - http://localhost:8000/api/documents/generate-quiz ${YELLOW}(POST)${NC}"
+echo -e "  - http://localhost:8000/api/documents/health ${YELLOW}(GET)${NC}"
+echo 
+echo -e "${BLUE}Frontend UI available at:${NC} http://localhost:8501"
+echo
+echo -e "${YELLOW}NOTE:${NC} The backend doesn't serve a web page at the root URL (http://localhost:8000/)."
+echo -e "      You should see \"404 Not Found\" if you access that URL directly - this is normal."
+echo -e "      The backend health check at http://localhost:8000/api/documents/health should return {\"status\": \"healthy\"}."
+echo -e "      You can test it with: ${CYAN}curl http://localhost:8000/api/documents/health${NC}"
+echo
+echo -e "${GREEN}The application is now running in separate terminal windows.${NC}"
 echo -e "${YELLOW}You can close each terminal window individually to stop the services.${NC}"
 echo -e "${YELLOW}Press Enter to close this launcher...${NC}"
 read 
