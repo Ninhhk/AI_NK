@@ -322,3 +322,77 @@ streamlit run frontend/app.py
 ## Giấy phép
 
 Giấy phép MIT - Xem tệp LICENSE để biết chi tiết
+
+## Advanced Usage
+
+You can pass various flags to control the update process:
+
+```
+# Windows (Continue even if some steps fail)
+update_project.bat --continue-on-error
+
+# Linux/Mac (Continue even if some steps fail)
+./update_project.sh --continue-on-error
+
+# Skip stashing local changes (not recommended)
+update_project.bat --skip-stash
+./update_project.sh --skip-stash
+
+# Only stash changes without updating (useful for quick context switching)
+update_project.bat --stash-only
+./update_project.sh --stash-only
+
+# Don't restore stashed changes after updating
+update_project.bat --no-restore
+./update_project.sh --no-restore
+```
+
+### Git Stash Protection
+
+The update scripts automatically handle local changes in your working directory:
+
+1. **Auto-stashing**: Any local uncommitted changes are automatically stashed before pulling updates
+2. **Conflict Detection**: After update, the script checks if restoring changes would cause conflicts
+3. **Conflict Resolution Options**: If conflicts are detected, you'll be given options:
+   - Apply stash anyway (might cause conflicts)
+   - Keep changes stashed (with instructions to restore later)
+   - Create a branch with your stashed changes (safest option)
+
+This prevents the common issue of losing work or creating merge conflicts during updates.
+
+## Sử Dụng Nâng Cao
+
+Bạn có thể sử dụng các cờ sau để kiểm soát quá trình cập nhật:
+
+```
+# Windows (Tiếp tục ngay cả khi một số bước thất bại)
+update_project.bat --continue-on-error
+
+# Linux/Mac (Tiếp tục ngay cả khi một số bước thất bại)
+./update_project.sh --continue-on-error
+
+# Bỏ qua việc stash các thay đổi cục bộ (không khuyến khích)
+update_project.bat --skip-stash
+./update_project.sh --skip-stash
+
+# Chỉ stash các thay đổi mà không cập nhật (hữu ích để chuyển ngữ cảnh nhanh)
+update_project.bat --stash-only
+./update_project.sh --stash-only
+
+# Không khôi phục các thay đổi đã stash sau khi cập nhật
+update_project.bat --no-restore
+./update_project.sh --no-restore
+```
+
+### Bảo Vệ Git Stash
+
+Các script cập nhật tự động xử lý các thay đổi cục bộ trong thư mục làm việc của bạn:
+
+1. **Tự động stash**: Bất kỳ thay đổi nào chưa commit sẽ được tự động stash trước khi kéo cập nhật
+2. **Phát hiện xung đột**: Sau khi cập nhật, script kiểm tra xem việc khôi phục thay đổi có gây xung đột không
+3. **Tùy chọn giải quyết xung đột**: Nếu phát hiện xung đột, bạn sẽ được cung cấp các tùy chọn:
+   - Áp dụng stash dù sao (có thể gây xung đột)
+   - Giữ các thay đổi trong stash (với hướng dẫn để khôi phục sau)
+   - Tạo một nhánh mới với các thay đổi đã stash (tùy chọn an toàn nhất)
+
+Điều này ngăn chặn vấn đề phổ biến về mất công việc hoặc tạo xung đột hợp nhất trong quá trình cập nhật.

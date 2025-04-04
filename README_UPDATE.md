@@ -38,17 +38,40 @@ chmod +x update_project.sh
 
 ### Advanced Usage
 
-You can pass the `--continue-on-error` flag to continue the process even if some steps fail:
+You can pass various flags to control the update process:
 
 ```
+# Windows (Continue even if some steps fail)
 update_project.bat --continue-on-error
-```
 
-or
-
-```
+# Linux/Mac (Continue even if some steps fail)
 ./update_project.sh --continue-on-error
+
+# Skip stashing local changes (not recommended)
+update_project.bat --skip-stash
+./update_project.sh --skip-stash
+
+# Only stash changes without updating (useful for quick context switching)
+update_project.bat --stash-only
+./update_project.sh --stash-only
+
+# Don't restore stashed changes after updating
+update_project.bat --no-restore
+./update_project.sh --no-restore
 ```
+
+### Git Stash Protection
+
+The update scripts automatically handle local changes in your working directory:
+
+1. **Auto-stashing**: Any local uncommitted changes are automatically stashed before pulling updates
+2. **Conflict Detection**: After update, the script checks if restoring changes would cause conflicts
+3. **Conflict Resolution Options**: If conflicts are detected, you'll be given options:
+   - Apply stash anyway (might cause conflicts)
+   - Keep changes stashed (with instructions to restore later)
+   - Create a branch with your stashed changes (safest option)
+
+This prevents the common issue of losing work or creating merge conflicts during updates.
 
 ## Requirements
 
