@@ -136,6 +136,7 @@ If you prefer to update manually, follow these steps:
 
 1. Pull the latest changes from the repository:
    ```bash
+   git stash
    git pull origin main
    ```
 
@@ -294,6 +295,7 @@ Nếu bạn thích cập nhật thủ công, hãy làm theo các bước sau:
 
 1. Kéo các thay đổi mới nhất từ kho lưu trữ:
 ```bash
+git stash
 git pull origin main
 ```
 
