@@ -153,7 +153,7 @@ If you prefer to update manually, follow these steps:
 
 4. Restart the frontend application:
    ```bash
-   streamlit run frontend/app.py
+   python run_frontend.py
    ```
 
 ## Development
@@ -312,7 +312,7 @@ python run_backend.py
 
 4. Khởi động lại ứng dụng frontend:
 ```bash
-streamlit run frontend/app.py
+python run_frontend.py
 ```
 
 ## Phát triển
