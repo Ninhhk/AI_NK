@@ -63,11 +63,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def generate_slides(topic: str, num_slides: int) -> dict:
+def generate_slides(topic: str, num_slides: int, document_file=None) -> dict:
     """Send content to backend for slide generation."""
+    files = {}
+    if document_file:
+        files["document"] = document_file
+        
+    data = {
+        "topic": topic,
+        "num_slides": num_slides
+    }
+    
     response = requests.post(
         "http://localhost:8000/api/slides/generate",
-        json={"topic": topic, "num_slides": num_slides}
+        files=files,
+        data=data
     )
     response.raise_for_status()
     return response.json()
@@ -110,6 +120,22 @@ with col2:
         help="Chọn số lượng slide bạn muốn tạo (tối đa 20 slide)"
     )
 
+# Document upload section
+st.markdown("""
+    <div class="card fade-in">
+        <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
+            📄 Tài liệu tham khảo (không bắt buộc)
+        </h3>
+    </div>
+""", unsafe_allow_html=True)
+
+document_file = st.file_uploader("Tải lên tài liệu để AI tham khảo nội dung", 
+                                type=["pdf", "docx", "txt"], 
+                                help="Tải lên tài liệu để AI tham khảo khi tạo slide. Hỗ trợ PDF, DOCX, và TXT")
+
+if document_file:
+    st.success(f"Đã tải lên tài liệu: {document_file.name}")
+
 # Generate button with custom styling
 if st.button("🚀 Tạo Slide", type="primary"):
     if not topic:
@@ -118,7 +144,7 @@ if st.button("🚀 Tạo Slide", type="primary"):
         with st.status("🔄 Đang tạo slide...", expanded=True) as status:
             try:
                 start_time = time.time()
-                result = generate_slides(topic, num_slides)
+                result = generate_slides(topic, num_slides, document_file)
                 
                 # Generate filename based on topic and timestamp
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -1,13 +1,16 @@
 import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 from datetime import datetime
 import logging
 import re
 import unicodedata
+import io
 
 from langchain_community.llms import Ollama
+from PyPDF2 import PdfReader
+import docx
 from .pptx_generator import PowerPointGenerator
 
 from .config import OLLAMA_CONFIG, PROMPT, OUTPUT_DIR
@@ -74,18 +77,78 @@ class SlideGenerationService:
             temperature=OLLAMA_CONFIG["temperature"]
         )
     
-    def generate_slides(self, topic: str, num_slides: int) -> Dict[str, List[Dict[str, str]]]:
+    def parse_document(self, file_content: bytes, file_type: str) -> str:
+        """Parse document content based on file type."""
+        if file_type == 'pdf':
+            return self._parse_pdf(file_content)
+        elif file_type == 'docx':
+            return self._parse_docx(file_content)
+        elif file_type in ['txt', 'text']:
+            return self._parse_txt(file_content)
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
+
+    def _parse_pdf(self, file_content: bytes) -> str:
+        """Extract text from a PDF file."""
+        with io.BytesIO(file_content) as f:
+            reader = PdfReader(f)
+            text = ""
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:  # Some pages might not have extractable text
+                    text += page_text + "\n\n"
+            return text
+
+    def _parse_docx(self, file_content: bytes) -> str:
+        """Extract text from a DOCX file."""
+        with io.BytesIO(file_content) as f:
+            doc = docx.Document(f)
+            text = ""
+            for paragraph in doc.paragraphs:
+                if paragraph.text:
+                    text += paragraph.text + "\n"
+            return text
+
+    def _parse_txt(self, file_content: bytes) -> str:
+        """Extract text from a TXT file."""
+        # Try to decode with UTF-8 first, fall back to other encodings if needed
+        try:
+            return file_content.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                return file_content.decode('utf-16')
+            except UnicodeDecodeError:
+                try:
+                    return file_content.decode('cp1258')  # Vietnamese encoding
+                except UnicodeDecodeError:
+                    return file_content.decode('utf-8', errors='replace')
+    
+    def generate_slides(self, topic: str, num_slides: int, document_content: Optional[str] = None) -> Dict[str, List[Dict[str, str]]]:
         """Generate slides for a given topic.
         
         Args:
             topic: The topic to generate slides about
             num_slides: Number of slides to generate
+            document_content: Optional content from uploaded document to use as context
             
         Returns:
             Dictionary containing the generated slides
         """
         try:
             logger.info(f"Generating {num_slides} slides about topic: {topic}")
+            
+            # Add document content to the prompt if available
+            additional_context = ""
+            if document_content and document_content.strip():
+                # Extract a reasonable amount of text (first 4000 characters)
+                truncated_content = document_content[:4000] + "..." if len(document_content) > 4000 else document_content
+                additional_context = f"""
+Use information from the following document to enhance the slides:
+---
+{truncated_content}
+---
+Reference this document content when creating the slides. Use relevant facts, figures, and information from the document.
+"""
             
             prompt = f"""Generate {num_slides} Vietnamese slides about {topic}. Your response MUST be a valid JSON array with the following structure:
 
@@ -103,6 +166,8 @@ class SlideGenerationService:
         "text": "Content of slide 2 with bullet points"
     }}
 ]
+
+{additional_context}
 
 RULES:
 1. You MUST create exactly {num_slides} slides total (including title slide)
