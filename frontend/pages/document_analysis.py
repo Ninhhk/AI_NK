@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import time
-from typing import Optional
+from typing import Optional, List
 import json
 import pkg_resources
 
@@ -18,14 +18,33 @@ with open('frontend/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 def analyze_document(
-    file,
+    files: List,
     query_type: str,
     user_query: Optional[str] = None,
     start_page: int = 0,
     end_page: int = -1,
 ) -> dict:
-    """Send document to backend for analysis."""
-    files = {"file": file}
+    """Send document(s) to backend for analysis."""
+    # Prepare files for multi-file upload
+    files_dict = {}
+    
+    if len(files) == 1:
+        # Single file case
+        files_dict = {"file": files[0]}
+    else:
+        # Multiple files case - properly send all files
+        # Main file (required by the API)
+        files_dict["file"] = files[0]
+        
+        # Add all additional files using both methods to ensure compatibility
+        # 1. Using extra_files_N parameters (for older API versions)
+        for i, f in enumerate(files[1:5]):  # Support up to 5 additional files
+            files_dict[f"extra_files_{i+1}"] = f
+            
+        # 2. Also use files[] format for newer API versions that support it
+        for i, f in enumerate(files):
+            files_dict[f"files[{i}]"] = f
+    
     data = {
         "query_type": query_type,
         "start_page": str(start_page),
@@ -34,10 +53,16 @@ def analyze_document(
     
     if user_query:
         data["user_query"] = user_query
+    
+    # Log request info if in debug mode
+    if st.session_state.debug_mode:
+        st.write(f"Sending {len(files)} files to the backend")
+        for i, f in enumerate(files):
+            st.write(f"File {i+1}: {f.name}")
         
     response = requests.post(
         "http://localhost:8000/api/documents/analyze",
-        files=files,
+        files=files_dict,
         data=data,
     )
     response.raise_for_status()
@@ -158,8 +183,8 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    file = st.file_uploader("Chọn tệp PDF", type=["pdf"])
-    if file:
+    files = st.file_uploader("Chọn tệp PDF", type=["pdf"], accept_multiple_files=True)
+    if files:
         st.markdown("""
             <div style='background-color: var(--success-color); color: white; padding: 0.5rem; border-radius: 5px; margin-top: 0.5em;'>
                 ✅ Tài liệu đã được tải lên thành công
@@ -215,13 +240,13 @@ with tab1:
     if st.button("🚀 Phân Tích", type="primary"):
         result = None
         start = time.time()
-        if file is None:
+        if not files:
             st.error("⚠️ Vui lòng tải lên tệp.")
         else:
             with st.status("🔄 Đang phân tích...", expanded=True) as status:
                 try:
                     result = analyze_document(
-                        file=file,
+                        files=files,
                         query_type=query_type,
                         user_query=user_query if query_type == "qa" else None,
                         start_page=start_page,
@@ -244,6 +269,10 @@ with tab1:
                     result = None
 
             if result:
+                # Check if we have document information to display
+                has_multiple_docs = "document_count" in result and result["document_count"] > 1
+                
+                # Display result header and result content
                 st.markdown("""
                     <div class="card fade-in">
                         <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
@@ -251,9 +280,59 @@ with tab1:
                         </h2>
                         <div style='color: var(--text-primary);'>
                 """, unsafe_allow_html=True)
-                st.markdown(result["result"])
+                
+                # Format result content to highlight citations
+                content = result["result"]
+                
+                # If we have multiple documents, add a document reference section
+                if has_multiple_docs and "documents" in result:
+                    st.markdown("""
+                        <div style="background-color: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #3498db;">
+                            <h4 style="margin-top: 0; color: #2c3e50;">Tài liệu được sử dụng:</h4>
+                            <ul style="margin-bottom: 0;">
+                    """, unsafe_allow_html=True)
+                    
+                    for doc in result.get("documents", []):
+                        st.markdown(f"""
+                            <li>
+                                <strong>[{doc['id']}]</strong>: {doc['filename']}
+                            </li>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                            </ul>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                # Format the content to highlight citations like [doc_1_abc123]
+                import re
+                if has_multiple_docs:
+                    # Find all citation patterns like [doc_X_XXXXX] in the text
+                    citation_pattern = r'\[(doc_\d+_[a-z0-9]+)\]'
+                    
+                    # Split by citations to preserve formatting
+                    parts = re.split(f'({citation_pattern})', content)
+                    
+                    formatted_parts = []
+                    for i, part in enumerate(parts):
+                        # Check if this part is a citation
+                        if i % 2 == 1 and re.match(citation_pattern, part):
+                            # Format as a citation badge
+                            citation_id = part[1:-1]  # Remove brackets
+                            formatted_parts.append(f'<span style="background-color: #e1f5fe; padding: 2px 6px; border-radius: 3px; color: #0277bd; font-weight: bold; font-size: 0.9em;">{part}</span>')
+                        else:
+                            formatted_parts.append(part)
+                    
+                    # Join parts back together
+                    formatted_content = ''.join(formatted_parts)
+                    st.markdown(formatted_content, unsafe_allow_html=True)
+                else:
+                    # Regular content without special formatting
+                    st.markdown(content)
+                
                 st.markdown("</div></div>", unsafe_allow_html=True)
                 
+                # Display timing information
                 st.markdown(f"""
                     <div class="card fade-in" style='margin-top: 1rem;'>
                         <p style='margin: 0; color: var(--text-primary);'>
@@ -261,6 +340,10 @@ with tab1:
                         </p>
                     </div>
                 """, unsafe_allow_html=True)
+                
+                # Display debug information if enabled
+                if st.session_state.debug_mode and "debug" in result:
+                    st.expander("Debug Information").write(result["debug"])
 
 with tab2:
     st.markdown("""
