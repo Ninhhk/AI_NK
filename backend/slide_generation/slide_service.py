@@ -15,8 +15,7 @@ import docx
 from .pptx_generator import PowerPointGenerator
 
 from .config import OLLAMA_CONFIG, PROMPT, OUTPUT_DIR
-# Commenting out the model_manager import to avoid dependency issues
-# from backend.model_management.model_manager import model_manager
+from backend.model_management.global_model_config import global_model_config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +68,12 @@ def _sanitize_filename(name: str) -> str:
 
 class SlideGenerationService:
     def __init__(self, model_name: str = OLLAMA_CONFIG["model_name"], base_url: str = OLLAMA_CONFIG["base_url"]):
+        # Check if a global model is set, and use it if available
+        global_model = global_model_config.get_model()
+        if global_model:
+            model_name = global_model
+            logger.info(f"Using globally configured model: {model_name}")
+            
         self.model_name = model_name
         self.base_url = base_url
         self.llm = self._initialize_model()
@@ -76,6 +81,12 @@ class SlideGenerationService:
         logger.info(f"Initialized SlideGenerationService with model {model_name} at {base_url}")
         
     def _initialize_model(self) -> Ollama:
+        # Check if a global model is set, and use it if available and different from current
+        global_model = global_model_config.get_model()
+        if global_model and global_model != self.model_name:
+            self.model_name = global_model
+            logger.info(f"Updating to globally configured model: {self.model_name}")
+            
         return Ollama(
             model=self.model_name,
             base_url=self.base_url,
@@ -87,10 +98,20 @@ class SlideGenerationService:
         if model_name != self.model_name:
             self.model_name = model_name
             self.llm = self._initialize_model()
-            logger.info(f"Changed model to {model_name}")
+            
+            # Update the global model configuration
+            global_model_config.set_model(model_name)
+            
+            logger.info(f"Changed model to {model_name} and updated global config")
     
     def get_current_model(self) -> str:
         """Get the current model name."""
+        # Always check global config first
+        global_model = global_model_config.get_model()
+        if global_model and global_model != self.model_name:
+            # Update local model to match global model
+            self.set_model(global_model)
+            
         return self.model_name
     
     def parse_document(self, file_content: bytes, file_type: str) -> str:

@@ -17,12 +17,24 @@ st.set_page_config(
 with open('frontend/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
+# Function to get the current model
+def get_current_model():
+    """Get the currently active model from the API"""
+    try:
+        response = requests.get("http://localhost:8000/api/slides/current-model")
+        response.raise_for_status()
+        return response.json()["model_name"]
+    except Exception as e:
+        st.error(f"Error fetching current model: {e}")
+        return None
+
 def analyze_document(
     files: List,
     query_type: str,
     user_query: Optional[str] = None,
     start_page: int = 0,
     end_page: int = -1,
+    model_name: Optional[str] = None,
 ) -> dict:
     """Send document(s) to backend for analysis."""
     # Prepare files for multi-file upload
@@ -53,6 +65,9 @@ def analyze_document(
     
     if user_query:
         data["user_query"] = user_query
+    
+    if model_name:
+        data["model_name"] = model_name
     
     # Log request info if in debug mode
     if st.session_state.debug_mode:
@@ -207,6 +222,11 @@ with st.sidebar:
         start_page = st.number_input("Start page:", value=0, min_value=0)
     with col2:
         end_page = st.number_input("End page:", value=-1)
+        
+    # Display current model information
+    current_model = get_current_model()
+    if current_model:
+        st.info(f"🤖 Using model: **{current_model}**. You can change the model in the Model Management page.", icon="ℹ️")
 
     st.markdown("""
         <div class="card fade-in">
@@ -245,12 +265,14 @@ with tab1:
         else:
             with st.status("🔄 Analyzing...", expanded=True) as status:
                 try:
+                    model_name = get_current_model()
                     result = analyze_document(
                         files=files,
                         query_type=query_type,
                         user_query=user_query if query_type == "qa" else None,
                         start_page=start_page,
                         end_page=end_page,
+                        model_name=model_name,
                     )
                     status.update(label="✅ Completed!", state="complete", expanded=False)
 

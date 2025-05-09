@@ -16,12 +16,24 @@ st.set_page_config(
 with open('frontend/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
+# Function to get the current model
+def get_current_model():
+    """Get the currently active model from the API"""
+    try:
+        response = requests.get("http://localhost:8000/api/slides/current-model")
+        response.raise_for_status()
+        return response.json()["model_name"]
+    except Exception as e:
+        st.error(f"Error fetching current model: {e}")
+        return None
+
 def generate_quiz(
     files: list,
     num_questions: int = 5,
     difficulty: str = "medium",
     start_page: int = 0,
     end_page: int = -1,
+    model_name: str = None,
 ) -> dict:
     """Send document to backend for quiz generation."""
     # Prepare multipart payload for multiple files
@@ -43,6 +55,10 @@ def generate_quiz(
         "start_page": str(start_page),
         "end_page": str(end_page),
     }
+    
+    # Add model_name if specified
+    if model_name:
+        data["model_name"] = model_name
         
     response = requests.post(
         "http://localhost:8000/api/documents/generate-quiz",
@@ -137,6 +153,11 @@ with st.sidebar:
         format_func=lambda x: x.capitalize(),
         help="Select the difficulty level for the questions"
     )
+    
+    # Display current model information
+    current_model = get_current_model()
+    if current_model:
+        st.info(f"🤖 Using model: **{current_model}**. You can change the model in the Model Management page.", icon="ℹ️")
 
 # Main content area
 if st.button("🚀 Generate Quiz", type="primary"):
@@ -160,12 +181,15 @@ if st.button("🚀 Generate Quiz", type="primary"):
                 time.sleep(0.5)  # Brief pause for visual feedback
                 status.update(label="🔄 Generating questions... This may take a few minutes.", state="running")
                 
+                model_name = get_current_model()
+                
                 result = generate_quiz(
                     files=files,
                     num_questions=num_questions,
                     difficulty=difficulty,
                     start_page=start_page,
                     end_page=end_page,
+                    model_name=model_name,
                 )
                 elapsed_time = time.time() - start_time
                 status.update(label=f"✅ Completed in {elapsed_time:.1f} seconds!", state="complete", expanded=False)

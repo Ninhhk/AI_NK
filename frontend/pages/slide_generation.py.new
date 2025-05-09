@@ -134,7 +134,8 @@ available_models = get_available_models()
 current_model = get_current_model()
 
 # Model selection
-with st.expander("🤖 AI Model Selection", expanded=False):    st.markdown("""
+with st.expander("🤖 AI Model Selection", expanded=False):
+    st.markdown("""
         Select which AI model to use for all application features including slide generation, document analysis, and quiz generation.
         Any changes made here will apply to the entire application.
         You can manage models in the Model Management page.
@@ -142,7 +143,8 @@ with st.expander("🤖 AI Model Selection", expanded=False):    st.markdown("""
     
     # Create a list of model names for the dropdown
     model_names = [model.get('name') for model in available_models]
-      # Only show dropdown if there are models available
+    
+    # Only show dropdown if there are models available
     if model_names:
         selected_model = st.selectbox(
             "Select Global AI Model",
