@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 from backend.api.document_routes import router as document_router
 from backend.api.slide_routes import router as slide_router
+from backend.api.simple_model_routes import router as model_router
 
 # Load environment variables
 load_dotenv()
@@ -21,4 +22,5 @@ app.add_middleware(
 
 # Include routers
 app.include_router(document_router, prefix="/api/documents", tags=["Documents"])
-app.include_router(slide_router, prefix="/api/slides", tags=["Slides"]) 
+app.include_router(slide_router, prefix="/api/slides", tags=["Slides"])
+app.include_router(model_router, prefix="/api/ollama", tags=["Ollama Models"])

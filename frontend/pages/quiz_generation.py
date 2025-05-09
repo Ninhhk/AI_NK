@@ -17,14 +17,26 @@ with open('frontend/style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 def generate_quiz(
-    file,
+    files: list,
     num_questions: int = 5,
     difficulty: str = "medium",
     start_page: int = 0,
     end_page: int = -1,
 ) -> dict:
     """Send document to backend for quiz generation."""
-    files = {"file": file}
+    # Prepare multipart payload for multiple files
+    files_dict = {}
+    # Primary file
+    if files:
+        f0 = files[0]
+        files_dict['file'] = (f0.name, f0.read(), f0.type)
+    # Extra files parameters (up to 5)
+    for i, f in enumerate(files[1:6], start=1):
+        files_dict[f'extra_files_{i}'] = (f.name, f.read(), f.type)
+    # Also include array format for newer APIs
+    for i, f in enumerate(files):
+        files_dict[f'files[{i}]'] = (f.name, f.read(), f.type)
+    
     data = {
         "num_questions": str(num_questions),
         "difficulty": difficulty,
@@ -34,7 +46,7 @@ def generate_quiz(
         
     response = requests.post(
         "http://localhost:8000/api/documents/generate-quiz",
-        files=files,
+        files=files_dict,
         data=data,
     )
     response.raise_for_status()
@@ -46,10 +58,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                ❓ Tạo Bài Kiểm Tra
+                ❓ AI Quiz Generator
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Tạo Bài Kiểm Tra Tự Động Từ Tài Liệu Với AI
+                Automatically generate quizzes from your documents
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -64,7 +76,7 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                ⚙️ Cài Đặt
+                ⚙️ Settings
             </h2>
         </div>
     """, unsafe_allow_html=True)
@@ -72,64 +84,64 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📤 Tải Lên Tài Liệu
+                📤 Upload Documents
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
-    file = st.file_uploader("Chọn tệp PDF", type=["pdf"])
-    if file:
-        st.markdown("""
+    files = st.file_uploader("Select PDF files", type=["pdf"], accept_multiple_files=True)
+    if files:
+        st.markdown(f"""
             <div style='background-color: var(--success-color); color: white; padding: 0.5rem; border-radius: 5px; margin-top: 0.5em;'>
-                ✅ Tài liệu đã được tải lên thành công
+                ✅ {len(files)} file(s) uploaded successfully
             </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📑 Phạm Vi Trang
+                📑 Page Range
             </h3>
             <p style='color: var(--text-primary); margin: 0.5em 0;'>
-                Chọn phạm vi trang để tạo câu hỏi. Sử dụng -1 cho trang cuối cùng.
+                Select page range for quiz generation. Use -1 for last page.
             </p>
         </div>
     """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        start_page = st.number_input("Trang bắt đầu:", value=0, min_value=0)
+        start_page = st.number_input("Start page:", value=0, min_value=0)
     with col2:
-        end_page = st.number_input("Trang kết thúc:", value=-1)
+        end_page = st.number_input("End page:", value=-1)
 
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                🎯 Tùy Chọn Bài Kiểm Tra
+                🎯 Quiz Options
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
     num_questions = st.slider(
-        "Số câu hỏi:",
+        "Number of questions:",
         min_value=1,
         max_value=20,
         value=5,
-        help="Chọn số lượng câu hỏi cho bài kiểm tra"
+        help="Select the number of questions for the quiz"
     )
     
     difficulty = st.select_slider(
-        "Độ khó:",
+        "Difficulty:",
         options=["easy", "medium", "hard"],
         value="medium",
-        format_func=lambda x: {"easy": "Dễ", "medium": "Trung bình", "hard": "Khó"}[x],
-        help="Chọn độ khó cho các câu hỏi"
+        format_func=lambda x: x.capitalize(),
+        help="Select the difficulty level for the questions"
     )
 
 # Main content area
-if st.button("🚀 Tạo Bài Kiểm Tra", type="primary"):
-    if file is None:
-        st.error("⚠️ Vui lòng tải lên tệp PDF trước khi tạo bài kiểm tra.")
+if st.button("🚀 Generate Quiz", type="primary"):
+    if not files:
+        st.error("⚠️ Please upload at least one PDF before generating a quiz.")
     else:
         # Variables to store results outside the status block
         quiz_result = None
@@ -137,49 +149,57 @@ if st.button("🚀 Tạo Bài Kiểm Tra", type="primary"):
         actual_questions = 0
         
         # Process the file and generate quiz
-        with st.status("🔄 Đang tạo bài kiểm tra...", expanded=True) as status:
-            status.update(label="🔄 Đang xử lý tài liệu...", state="running")
+        with st.status("🔄 Creating quiz...", expanded=True) as status:
+            status.update(label="🔄 Processing document...", state="running")
             try:
                 start_time = time.time()
                 
                 # Add progress updates
                 time.sleep(0.5)  # Brief pause for visual feedback
-                status.update(label="🔄 Đang phân tích nội dung...", state="running")
+                status.update(label="🔄 Analyzing content...", state="running")
                 time.sleep(0.5)  # Brief pause for visual feedback
-                status.update(label="🔄 Đang tạo câu hỏi... Quá trình này có thể mất vài phút.", state="running")
+                status.update(label="🔄 Generating questions... This may take a few minutes.", state="running")
                 
                 result = generate_quiz(
-                    file=file,
+                    files=files,
                     num_questions=num_questions,
                     difficulty=difficulty,
                     start_page=start_page,
                     end_page=end_page,
                 )
                 elapsed_time = time.time() - start_time
-                status.update(label=f"✅ Hoàn thành trong {elapsed_time:.1f} giây!", state="complete", expanded=False)
+                status.update(label=f"✅ Completed in {elapsed_time:.1f} seconds!", state="complete", expanded=False)
 
                 # Store results for use outside the status block
                 quiz_result = result
-                actual_questions = result["result"].count("Câu ")
+                st.write("Debug quiz_result:", quiz_result)
+                
+                # Extract quiz text and guard against missing content
+                quiz_text = quiz_result.get("result", "")
+                if not quiz_text.strip():
+                    st.error("⚠️ Backend returned no quiz content. Full response:")
+                    st.json(quiz_result)
+                    st.stop()
+                actual_questions = len(quiz_text.split("Câu "))
                 
             except Exception as e:
-                status.update(label="❌ Lỗi", state="error", expanded=True)
-                st.error(f"⚠️ Đã xảy ra lỗi: {str(e)}")
-                st.error("Vui lòng thử lại hoặc điều chỉnh các tham số.")
+                status.update(label="❌ Error", state="error", expanded=True)
+                st.error(f"⚠️ An error occurred: {str(e)}")
+                st.error("Please try again or adjust the parameters.")
         
-        # Display results only if we have a valid quiz_result
-        if quiz_result is not None:
+        # Display results only if we have a valid quiz_text
+        if quiz_text:
             # Display quiz in a card with better formatting
             st.markdown(f"""
                 <div class="card fade-in">
                     <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                        📝 Bài Kiểm Tra ({actual_questions} câu hỏi)
+                        📝 Quiz ({actual_questions} questions)
                     </h2>
                 </div>
             """, unsafe_allow_html=True)
             
             # Split questions by pattern and display them in separate containers
-            quiz_content = quiz_result["result"]
+            quiz_content = quiz_text
             questions = []
             current = ""
             
@@ -203,7 +223,7 @@ if st.button("🚀 Tạo Bài Kiểm Tra", type="primary"):
                     <div style='background-color: #1e2130; padding: 15px; 
                          border-radius: 10px; border-left: 4px solid var(--primary-color); 
                          margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-                        <h4 style='color: var(--primary-color); margin-top: 0;'>Câu hỏi {i}</h4>
+                        <h4 style='color: var(--primary-color); margin-top: 0;'>Question {i}</h4>
                         <div style='font-size: 1.1em; white-space: pre-line; color: #e6e6e6;'>{question}</div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -212,18 +232,18 @@ if st.button("🚀 Tạo Bài Kiểm Tra", type="primary"):
             st.markdown(f"""
                 <div class="card fade-in" style='margin-top: 1rem;'>
                     <p style='margin: 0; color: var(--text-primary);'>
-                        <strong>⏱️ Thời gian thực hiện:</strong> {elapsed_time:.2f} giây
+                        <strong>⏱️ Execution time:</strong> {elapsed_time:.2f} seconds
                     </p>
                     <p style='margin: 0; color: var(--text-primary);'>
-                        <strong>📊 Câu hỏi được tạo:</strong> {actual_questions}/{num_questions} câu hỏi
+                        <strong>📊 Questions generated:</strong> {actual_questions}/{num_questions}
                     </p>
                 </div>
             """, unsafe_allow_html=True)
 
-            # Add download button for the quiz
-            quiz_text = quiz_result["result"]
+            # Prepare download data
+            quiz_text = quiz_text
             st.download_button(
-                label="📥 Tải xuống bài kiểm tra",
+                label="📥 Download Quiz",
                 data=quiz_text,
                 file_name=f"quiz_{num_questions}q_{difficulty}.txt",
                 mime="text/plain",

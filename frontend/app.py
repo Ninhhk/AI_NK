@@ -80,7 +80,7 @@ with col1:
         </div>
     """, unsafe_allow_html=True)
     if st.button("🚀 Thử Phân tích Tài liệu →", type="primary"):
-        st.switch_page("pages/document_analysis.py")
+        st.switch_page("document_analysis")
 
 with col2:
     st.markdown("""
@@ -117,7 +117,7 @@ with col2:
         </div>
     """, unsafe_allow_html=True)
     if st.button("🚀 Thử Tạo Slide →", type="primary"):
-        st.switch_page("pages/slide_generation.py")
+        st.switch_page("slide_generation")
 
 with col3:
     st.markdown("""
@@ -154,7 +154,8 @@ with col3:
         </div>
     """, unsafe_allow_html=True)
     if st.button("🚀 Thử Tạo Bài Kiểm Tra →", type="primary"):
-        st.switch_page("pages/quiz_generation.py")
+        # Navigate to the quiz generation page by its module name
+        st.switch_page("quiz_generation")
 
 # Tips section with animated cards
 st.markdown("""

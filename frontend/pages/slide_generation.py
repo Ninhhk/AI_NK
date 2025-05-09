@@ -63,24 +63,52 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def generate_slides(topic: str, num_slides: int, document_file=None) -> dict:
-    """Send content to backend for slide generation."""
-    files = {}
-    if document_file:
-        files["document"] = document_file
-        
+def generate_slides(topic: str, num_slides: int, model_name: str = None, document_files=None) -> dict:
+    """Send content to backend for slide generation with multiple documents."""
+    # Prepare files list for multi-file upload under 'documents'
+    files = []
+    if document_files:
+        for f in document_files:
+            files.append((
+                "documents",
+                (f.name, f.getvalue(), f.type)
+            ))
     data = {
-        "topic": topic,
+        "topic": topic, 
         "num_slides": num_slides
     }
     
+    # Add model_name if specified
+    if model_name:
+        data["model_name"] = model_name
+        
     response = requests.post(
         "http://localhost:8000/api/slides/generate",
-        files=files,
+        files=files or None,
         data=data
     )
     response.raise_for_status()
     return response.json()
+
+def get_available_models() -> list:
+    """Get list of available models from backend."""
+    try:
+        response = requests.get("http://localhost:8000/api/ollama/models")
+        response.raise_for_status()
+        return response.json().get("models", [])
+    except Exception as e:
+        st.error(f"Error fetching models: {e}")
+        return []
+    
+def get_current_model() -> str:
+    """Get current model being used for slide generation."""
+    try:
+        response = requests.get("http://localhost:8000/api/slides/current-model")
+        response.raise_for_status()
+        return response.json().get("model_name", "")
+    except Exception as e:
+        print(f"Error fetching current model: {e}")
+        return ""
 
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
@@ -88,10 +116,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                🎯 Tạo Slide
+                🎯 Create Slides
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Tạo Bài Thuyết Trình Chuyên Nghiệp Với AI
+                Create Professional Presentations With AI
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -101,50 +129,87 @@ st.markdown("""
     <div style='height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent);'></div>
 """, unsafe_allow_html=True)
 
+# Get available models for dropdown
+available_models = get_available_models()
+current_model = get_current_model()
+
+# Model selection
+with st.expander("🤖 AI Model Selection", expanded=False):
+    st.markdown("""
+        Select which AI model to use for generating your slides. 
+        Different models have different capabilities and styles.
+        You can manage models in the Model Management page.
+    """)
+    
+    # Create a list of model names for the dropdown
+    model_names = [model.get('name') for model in available_models]
+    
+    # Only show dropdown if there are models available
+    if model_names:
+        selected_model = st.selectbox(
+            "Select AI Model",
+            options=model_names,
+            index=model_names.index(current_model) if current_model in model_names else 0,
+            help="Choose which AI model to use for slide generation"
+        )
+        st.info(f"Using model: {selected_model}")
+    else:
+        st.warning("No models available. Please visit the Model Management page to add models.")
+        selected_model = None
+
 # Input section with better layout
 col1, col2 = st.columns([2,1])
 
 with col1:
     topic = st.text_input(
-        "📝 Chủ đề của bạn",
-        placeholder="Nhập chủ đề bạn muốn tạo slide cho...",
-        help="Nhập một chủ đề rõ ràng để AI có thể tạo slide phù hợp"
+        "📝 Your Topic",
+        placeholder="Enter the topic you want to create slides for...",
+        help="Enter a clear topic for the AI to generate appropriate slides"
     )
 
 with col2:
     num_slides = st.number_input(
-        "📊 Số lượng slide",
+        "📊 Number of Slides",
         min_value=1,
         max_value=20,
         value=5,
-        help="Chọn số lượng slide bạn muốn tạo (tối đa 20 slide)"
+        help="Choose the number of slides you want to create (maximum 20 slides)"
     )
 
-# Document upload section
+# Reference document upload section supporting multiple files
 st.markdown("""
     <div class="card fade-in">
         <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-            📄 Tài liệu tham khảo (không bắt buộc)
+            📄 Reference Documents (optional)
         </h3>
     </div>
 """, unsafe_allow_html=True)
-
-document_file = st.file_uploader("Tải lên tài liệu để AI tham khảo nội dung", 
-                                type=["pdf", "docx", "txt"], 
-                                help="Tải lên tài liệu để AI tham khảo khi tạo slide. Hỗ trợ PDF, DOCX, và TXT")
-
-if document_file:
-    st.success(f"Đã tải lên tài liệu: {document_file.name}")
+document_files = st.file_uploader(
+    "Upload one or more documents for AI reference",
+    type=["pdf", "docx", "txt"],
+    accept_multiple_files=True,
+    help="Upload documents for AI to reference when creating slides. Supports PDF, DOCX, and TXT"
+)
+if document_files:
+    for doc in document_files:
+        st.success(f"Uploaded: {doc.name}")
 
 # Generate button with custom styling
-if st.button("🚀 Tạo Slide", type="primary"):
+if st.button("🚀 Create Slides", type="primary"):
     if not topic:
-        st.error("⚠️ Vui lòng nhập chủ đề trước.")
+        st.error("⚠️ Please enter a topic first.")
     else:
-        with st.status("🔄 Đang tạo slide...", expanded=True) as status:
+        with st.status("🔄 Creating slides...", expanded=True) as status:
             try:
                 start_time = time.time()
-                result = generate_slides(topic, num_slides, document_file)
+                
+                # Include selected model in the generation request
+                result = generate_slides(
+                    topic=topic, 
+                    num_slides=num_slides, 
+                    model_name=selected_model if 'selected_model' in locals() else None,
+                    document_files=document_files
+                )
                 
                 # Generate filename based on topic and timestamp
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -167,7 +232,7 @@ if st.button("🚀 Tạo Slide", type="primary"):
                     time.sleep(0.5)  # Wait 0.5 seconds between checks
                 
                 if file_found:
-                    status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
+                    status.update(label="✅ Completed!", state="complete", expanded=False)
                     
                     # Show download button with better styling
                     st.markdown("""
@@ -178,7 +243,7 @@ if st.button("🚀 Tạo Slide", type="primary"):
                         file_data = f.read()
                         
                     st.download_button(
-                        label="📥 Tải PowerPoint",
+                        label="📥 Download PowerPoint",
                         data=file_data,
                         file_name=filename,
                         mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -190,17 +255,17 @@ if st.button("🚀 Tạo Slide", type="primary"):
                     st.markdown(f"""
                         <div class="card fade-in" style='margin-top: 1rem;'>
                             <p style='margin: 0; color: var(--text-primary);'>
-                                <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start_time:.2f} giây
+                                <strong>⏱️ Execution Time:</strong> {time.time() - start_time:.2f} seconds
                             </p>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
-                    status.update(label="⚠️ Đã tạo slide nhưng tên file có thể quá dài để hiển thị, tìm file trong /output/sildes", state="error", expanded=False)
-                    st.error(f"⚠️ Không thể tìm thấy file {filename} do tên quá dài. Vui lòng tìm file trong /output/sildes.")
+                    status.update(label="⚠️ Slides created but the filename might be too long to display, find the file in /output/slides", state="error", expanded=False)
+                    st.error(f"⚠️ Unable to find file {filename} due to a long filename. Please find the file in /output/slides.")
                 
             except Exception as e:
-                status.update(label="❌ Lỗi", state="error", expanded=False)
-                st.error(f"⚠️ Đã xảy ra lỗi: {e}")
+                status.update(label="❌ Error", state="error", expanded=False)
+                st.error(f"⚠️ An error occurred: {e}")
 
 # Footer with gradient separator
 st.markdown("""

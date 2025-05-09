@@ -86,19 +86,19 @@ def load_chat_history():
             return True
         except requests.exceptions.ConnectionError:
             if st.session_state.debug_mode:
-                st.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra xem máy chủ backend đã được khởi động chưa.")
+                st.error("Cannot connect to server. Please check if the backend server has been started.")
             else:
-                st.error("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.")
+                st.error("Cannot connect to server. Please try again later.")
             return False
         except requests.exceptions.HTTPError as e:
             if st.session_state.debug_mode:
-                st.error(f"Lỗi HTTP khi tải lịch sử trò chuyện: {e}")
+                st.error(f"HTTP error when loading chat history: {e}")
             if "404" in str(e):
-                st.warning("API endpoint cho lịch sử trò chuyện không tồn tại. Vui lòng cập nhật mã nguồn backend.")
+                st.warning("API endpoint for chat history does not exist. Please update the backend code.")
             return False
         except Exception as e:
             if st.session_state.debug_mode:
-                st.error(f"Lỗi khi tải lịch sử trò chuyện: {e}")
+                st.error(f"Error loading chat history: {e}")
             return False
     return False
 
@@ -132,7 +132,7 @@ def refresh_page():
             st.experimental_rerun()
     except Exception as e:
         # Fallback message if both methods fail
-        st.warning(f"Không thể làm mới trang tự động. Vui lòng làm mới trang thủ công. (Lỗi: {e})")
+        st.warning(f"Unable to refresh page automatically. Please refresh the page manually. (Error: {e})")
 
 # Initialize session state variables
 if 'document_id' not in st.session_state:
@@ -152,10 +152,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                📄 Phân Tích Tài Liệu
+                📄 Document Analysis
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Xử Lý Thông Tin Hiệu Quả Với AI
+                Efficient Information Processing with AI
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -170,7 +170,7 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                ⚙️ Cài Đặt
+                ⚙️ Settings
             </h2>
         </div>
     """, unsafe_allow_html=True)
@@ -178,72 +178,72 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📤 Tải Lên Tài Liệu
+                📤 Upload Document
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
-    files = st.file_uploader("Chọn tệp PDF", type=["pdf"], accept_multiple_files=True)
+    files = st.file_uploader("Select PDF file", type=["pdf"], accept_multiple_files=True)
     if files:
         st.markdown("""
             <div style='background-color: var(--success-color); color: white; padding: 0.5rem; border-radius: 5px; margin-top: 0.5em;'>
-                ✅ Tài liệu đã được tải lên thành công
+                ✅ Document uploaded successfully
             </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📑 Phạm Vi Trang
+                📑 Page Range
             </h3>
             <p style='color: var(--text-primary); margin: 0.5em 0;'>
-                Chọn phạm vi trang. Các trang được đánh số từ 0. Đối với trang cuối cùng, bạn cũng có thể sử dụng số âm để đếm từ cuối, ví dụ: -1 là trang cuối cùng, -2 là trang gần cuối, v.v.
+                Select page range. Pages are numbered from 0. For the last page, you can also use negative numbers to count from the end, e.g., -1 is the last page, -2 is the second-to-last page, etc.
             </p>
         </div>
     """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        start_page = st.number_input("Trang bắt đầu:", value=0, min_value=0)
+        start_page = st.number_input("Start page:", value=0, min_value=0)
     with col2:
-        end_page = st.number_input("Trang kết thúc:", value=-1)
+        end_page = st.number_input("End page:", value=-1)
 
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                🔍 Loại Phân Tích
+                🔍 Analysis Type
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
-    query_type = st.radio("Chọn chức năng", ["summary", "qa"])
+    query_type = st.radio("Select function", ["summary", "qa"])
 
 # Main content area tabs - QA section and Chat History
-tab1, tab2 = st.tabs(["📝 Phân Tích Tài Liệu", "💬 Lịch Sử Trò Chuyện"])
+tab1, tab2 = st.tabs(["📝 Document Analysis", "💬 Chat History"])
 
 with tab1:
     if query_type == "qa":
         st.markdown("""
             <div class="card fade-in">
                 <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                    ❓ Câu hỏi của bạn
+                    ❓ Your Question
                 </h3>
             </div>
         """, unsafe_allow_html=True)
         
         user_query = st.text_area(
             "",
-            value="Dữ liệu nào được sử dụng trong phân tích này?",
-            help="Nhập câu hỏi cụ thể để nhận câu trả lời chính xác"
+            value="What data is used in this analysis?",
+            help="Enter a specific question to get an accurate answer"
         )
 
-    if st.button("🚀 Phân Tích", type="primary"):
+    if st.button("🚀 Analyze", type="primary"):
         result = None
         start = time.time()
         if not files:
-            st.error("⚠️ Vui lòng tải lên tệp.")
+            st.error("⚠️ Please upload a file.")
         else:
-            with st.status("🔄 Đang phân tích...", expanded=True) as status:
+            with st.status("🔄 Analyzing...", expanded=True) as status:
                 try:
                     result = analyze_document(
                         files=files,
@@ -252,7 +252,7 @@ with tab1:
                         start_page=start_page,
                         end_page=end_page,
                     )
-                    status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
+                    status.update(label="✅ Completed!", state="complete", expanded=False)
 
                     # Store document_id for chat history
                     if "document_id" in result:
@@ -264,8 +264,8 @@ with tab1:
                             load_chat_history()
                     
                 except Exception as e:
-                    status.update(label="❌ Lỗi", state="error", expanded=False)
-                    st.error(f"⚠️ Đã xảy ra lỗi: {e}")
+                    status.update(label="❌ Error", state="error", expanded=False)
+                    st.error(f"⚠️ An error occurred: {e}")
                     result = None
 
             if result:
@@ -276,7 +276,7 @@ with tab1:
                 st.markdown("""
                     <div class="card fade-in">
                         <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                            📊 Kết Quả
+                            📊 Results
                         </h2>
                         <div style='color: var(--text-primary);'>
                 """, unsafe_allow_html=True)
@@ -288,7 +288,7 @@ with tab1:
                 if has_multiple_docs and "documents" in result:
                     st.markdown("""
                         <div style="background-color: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #3498db;">
-                            <h4 style="margin-top: 0; color: #2c3e50;">Tài liệu được sử dụng:</h4>
+                            <h4 style="margin-top: 0; color: #2c3e50;">Documents used:</h4>
                             <ul style="margin-bottom: 0;">
                     """, unsafe_allow_html=True)
                     
@@ -336,7 +336,7 @@ with tab1:
                 st.markdown(f"""
                     <div class="card fade-in" style='margin-top: 1rem;'>
                         <p style='margin: 0; color: var(--text-primary);'>
-                            <strong>⏱️ Thời gian thực hiện:</strong> {time.time() - start:.2f} giây
+                            <strong>⏱️ Execution time:</strong> {time.time() - start:.2f} seconds
                         </p>
                     </div>
                 """, unsafe_allow_html=True)
@@ -349,7 +349,7 @@ with tab2:
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                💬 Lịch Sử Trò Chuyện
+                💬 Chat History
             </h2>
         </div>
     """, unsafe_allow_html=True)
@@ -357,11 +357,11 @@ with tab2:
     # Check if we have a document ID
     if st.session_state.document_id:
         # Add refresh button for chat history - manually call the load function
-        if st.button("🔄 Làm mới lịch sử", key="refresh_history"):
+        if st.button("🔄 Refresh history", key="refresh_history"):
             # Load chat history into session state
             success = load_chat_history()
             if success and st.session_state.debug_mode:
-                st.success("Lịch sử trò chuyện đã được làm mới!")
+                st.success("Chat history refreshed!")
             
         # Load chat history if not already loaded
         if not st.session_state.chat_history or time.time() - st.session_state.chat_history_last_loaded > 30:
@@ -369,13 +369,13 @@ with tab2:
             
         # Display debug info if needed
         if st.session_state.debug_mode:
-            st.info(f"Phiên bản Streamlit: {get_streamlit_version()}")
-            st.info(f"Đã tải {len(st.session_state.chat_history)} tin nhắn từ lịch sử trò chuyện.")
-            st.info(f"Lần cuối cập nhật: {format_timestamp(st.session_state.chat_history_last_loaded)}")
+            st.info(f"Streamlit version: {get_streamlit_version()}")
+            st.info(f"Loaded {len(st.session_state.chat_history)} messages from chat history.")
+            st.info(f"Last updated: {format_timestamp(st.session_state.chat_history_last_loaded)}")
         
         # Display chat history from session state
         if not st.session_state.chat_history:
-            st.info("Chưa có cuộc trò chuyện nào với tài liệu này.")
+            st.info("No conversations with this document yet.")
         else:
             # Display chat history in reverse order (newest first)
             for chat in reversed(st.session_state.chat_history):
@@ -388,7 +388,7 @@ with tab2:
                 st.markdown(f"""
                     <div style="margin-bottom: 1rem;">
                         <p style="color: var(--accent-color); font-weight: bold; margin-bottom: 0.5rem;">
-                            🙋 Câu hỏi ({format_timestamp(chat["timestamp"])})
+                            🙋 Question ({format_timestamp(chat["timestamp"])})
                         </p>
                         <div style="background-color: rgba(52, 152, 219, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--accent-color);">
                             <p style="margin: 0; color: var(--text-primary);">{chat["user_query"]}</p>
@@ -400,7 +400,7 @@ with tab2:
                 st.markdown(f"""
                     <div>
                         <p style="color: var(--primary-color); font-weight: bold; margin-bottom: 0.5rem;">
-                            🤖 Trả lời
+                            🤖 Response
                         </p>
                         <div style="background-color: rgba(31, 119, 180, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 3px solid var(--primary-color);">
                             <p style="margin: 0; color: var(--text-primary);">{chat["system_response"]}</p>
@@ -410,7 +410,7 @@ with tab2:
                 
                 st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("Vui lòng phân tích tài liệu bằng chức năng Q&A trước để có lịch sử trò chuyện.")
+        st.info("Please analyze a document using the Q&A function first to have chat history.")
 
 # Footer with gradient separator
 st.markdown("""

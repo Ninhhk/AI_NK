@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.util import Inches, Pt
 from datetime import datetime
 import logging
 import json
@@ -16,7 +16,7 @@ class PowerPointGenerator:
         """Generate a PowerPoint presentation from the slides data.
         
         Args:
-            slides_data: List of slide dictionaries with title_text and text fields
+            slides_data: List of slide dictionaries with title_text and content fields
             output_path: Path where to save the presentation
             
         Returns:
@@ -26,16 +26,9 @@ class PowerPointGenerator:
             # Create a new Presentation object for each generation
             self.prs = Presentation()
             
-            # Add title slide
-            title_slide = slides_data[0]
-            if title_slide.get("is_title_slide") == "yes":
-                self.add_title_slide(title_slide["title_text"])
-            else:
-                self.add_title_slide(title_slide["title_text"])
-
-            # Add content slides
-            for slide_data in slides_data[1:]:
-                self.add_content_slide(slide_data)
+            # Process all slides - including the first one
+            for slide_data in slides_data:
+                self.add_slide(slide_data)
 
             # Ensure the output path exists
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,73 +42,105 @@ class PowerPointGenerator:
             logger.error(f"Error creating PowerPoint presentation: {str(e)}")
             raise
 
-    def add_title_slide(self, title: str):
-        """Add a title slide to the presentation."""
+    def add_slide(self, slide_data: dict):
+        """Add a slide to the presentation with title and bullet points."""
         try:
-            title_slide_layout = self.prs.slide_layouts[0]
-            slide = self.prs.slides.add_slide(title_slide_layout)
-            title_shape = slide.shapes.title
-            title_shape.text = title
-        except Exception as e:
-            logger.error(f"Error adding title slide: {str(e)}")
-            raise
-
-    def add_content_slide(self, slide_data: dict):
-        """Add a content slide to the presentation."""
-        try:
-            bullet_slide_layout = self.prs.slide_layouts[1]
-            slide = self.prs.slides.add_slide(bullet_slide_layout)
-            shapes = slide.shapes
-
-            # Title
-            title_shape = shapes.title
-            title_shape.text = slide_data["title_text"]
-
-            # Body
-            if "text" in slide_data and slide_data["text"]:
-                body_shape = shapes.placeholders[1]
-                tf = body_shape.text_frame
-                tf.clear()  # Clear any existing text
+            # Use a slide layout with title and content
+            slide_layout = self.prs.slide_layouts[1]  # Layout 1 is title and content
+            slide = self.prs.slides.add_slide(slide_layout)
+            
+            # Add title
+            if "title_text" in slide_data:
+                title = slide.shapes.title
+                title.text = slide_data["title_text"]
+            
+            # Check if content is available (as list)
+            if "content" in slide_data and isinstance(slide_data["content"], list):
+                # Get the content placeholder (usually index 1)
+                content_placeholder = None
+                for shape in slide.placeholders:
+                    if hasattr(shape, 'placeholder_format') and shape.placeholder_format.idx == 1:  # 1 is the content placeholder
+                        content_placeholder = shape
+                        break
                 
-                # Process text content
-                text_content = slide_data["text"].strip()
-                if text_content:
-                    # Split into lines and process each line once
-                    lines = [line.strip() for line in text_content.split("\n") if line.strip()]
-                    first_line = True
+                # If no content placeholder found, try to get by index
+                if not content_placeholder:
+                    try:
+                        content_placeholder = slide.placeholders[1]
+                    except:
+                        logger.warning("Couldn't find content placeholder, using text box")
+                        # Create a text box if placeholder not found
+                        left = Inches(1)
+                        top = Inches(2)
+                        width = Inches(8)
+                        height = Inches(4)
+                        content_placeholder = slide.shapes.add_textbox(left, top, width, height)
+                
+                # Get the text frame to add bullet points
+                text_frame = content_placeholder.text_frame
+                text_frame.clear()  # Clear any default content
+                
+                # Add each content item as a bullet point
+                for i, item in enumerate(slide_data["content"]):
+                    if i == 0:
+                        # Use the first paragraph that already exists
+                        paragraph = text_frame.paragraphs[0]
+                    else:
+                        # Add additional paragraphs for remaining items
+                        paragraph = text_frame.add_paragraph()
                     
-                    for line in lines:
-                        # Remove any existing bullet points at the start of the line
-                        line = line.lstrip('•').lstrip('*').lstrip('-').strip()
-                        
-                        # Calculate indentation level from the original text
-                        original_line = line
-                        indent_level = 0
-                        while original_line.startswith('  '):  # Count pairs of spaces for indentation
-                            indent_level += 1
-                            original_line = original_line[2:]
-                        
-                        # Add paragraph with proper encoding
-                        if first_line:
-                            p = tf.paragraphs[0]  # Use existing first paragraph
-                            first_line = False
+                    # Set bullet style
+                    paragraph.level = 0  # Top level bullet
+                    
+                    # Clean the item text (remove leading bullet if present)
+                    text = item.strip()
+                    if text.startswith("-") or text.startswith("•") or text.startswith("*"):
+                        text = text[1:].strip()
+                    
+                    paragraph.text = text
+                    
+                    # Set font properties for better appearance
+                    for run in paragraph.runs:
+                        run.font.size = Pt(18)
+            
+            # Handle text field if provided instead of content
+            elif "text" in slide_data and slide_data["text"]:
+                # Process the same way as above but with the text split by lines
+                try:
+                    content_placeholder = slide.placeholders[1]
+                    text_frame = content_placeholder.text_frame
+                    text_frame.clear()
+                    
+                    lines = [line.strip() for line in slide_data["text"].split("\n") if line.strip()]
+                    
+                    for i, line in enumerate(lines):
+                        if i == 0:
+                            paragraph = text_frame.paragraphs[0]
                         else:
-                            p = tf.add_paragraph()
+                            paragraph = text_frame.add_paragraph()
                         
-                        p.text = line
-                        p.level = min(indent_level, 4)  # Cap at 4 levels of indentation
-
+                        paragraph.level = 0
+                        
+                        # Clean the line
+                        if line.startswith("-") or line.startswith("•") or line.startswith("*"):
+                            line = line[1:].strip()
+                        
+                        paragraph.text = line
+                        
+                        for run in paragraph.runs:
+                            run.font.size = Pt(18)
+                except Exception as e:
+                    logger.error(f"Error processing text field: {e}")
+            
             # Add images if present
             if "images" in slide_data:
-                cur_left = 6
                 for img_path in slide_data.get("images", []):
                     if os.path.exists(img_path):
-                        top = Inches(2)
-                        left = Inches(cur_left)
-                        height = Inches(4)
-                        slide.shapes.add_picture(img_path, left, top, height=height)
-                        cur_left += 1
-                        
+                        left = Inches(1)
+                        top = Inches(3)
+                        width = Inches(4)
+                        slide.shapes.add_picture(img_path, left, top, width=width)
+                
         except Exception as e:
-            logger.error(f"Error adding content slide: {str(e)}")
-            raise 
+            logger.error(f"Error adding slide: {str(e)}")
+            raise Exception(f"Error adding slide: {str(e)}")
