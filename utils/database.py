@@ -10,6 +10,8 @@ from typing import Dict, Any, Optional, Tuple, List
 BASE_DIR = Path(__file__).parent.parent
 STORAGE_DIR = BASE_DIR / "storage"
 DB_PATH = STORAGE_DIR / "database.sqlite"
+# Log the actual absolute path for debugging
+print(f"Database path: {DB_PATH.absolute()}")
 UPLOAD_DIR = STORAGE_DIR / "uploads"
 
 # Ensure directories exist
@@ -28,15 +30,18 @@ class DatabaseConnection:
     
     def __init__(self):
         self.conn = None
-    
     def __enter__(self):
         # Create tables if they don't exist
         self.conn = sqlite3.connect(DB_PATH)
         self.conn.row_factory = dict_factory
         
-        # Enable foreign keys
+        # Enable foreign keys and verify they're ON
         cursor = self.conn.cursor()
         cursor.execute("PRAGMA foreign_keys = ON")
+        cursor.execute("PRAGMA foreign_keys")
+        fk_status = cursor.fetchone()
+        if fk_status and fk_status['foreign_keys'] != 1:
+            print(f"Warning: Foreign keys not enabled: {fk_status}")
         
         # Create schema if needed
         self._create_schema()
@@ -150,13 +155,12 @@ class Storage:
     def get_file_path(path: str) -> str:
         """Get full path to a file in storage"""
         return path
-    
     @staticmethod
     def read_file(path: str) -> bytes:
         """Read file contents from storage"""
         with open(path, "rb") as f:
             return f.read()
-    
+            
     @staticmethod
     def delete_file(path: str) -> bool:
         """Delete a file from storage"""
@@ -166,6 +170,22 @@ class Storage:
                 return True
             return False
         except Exception:
+            return False
+            
+    @staticmethod
+    def vacuum_database() -> bool:
+        """
+        Perform SQLite VACUUM operation to optimize database and reclaim disk space
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            with DatabaseConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("VACUUM")
+                return True
+        except Exception as e:
+            print(f"Error during database vacuum: {e}")
             return False
 
 def serialize_meta(meta_dict: Dict) -> str:

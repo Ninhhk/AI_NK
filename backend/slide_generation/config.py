@@ -24,16 +24,24 @@ SUPPORTED_FORMATS = [".pptx", ".pdf"]
 
 PROMPT = """
 Generate {num_slides} slides about {topic}. The output should be a Vietnamese presentation in a valid JSON array format.
-Each slide should have a 'title' and 'content' field. The content should be in bullet points (use '-' for bullets).
+Each slide MUST have a 'title' field and 'content' field. The content should be in bullet points (use '-' for bullets).
 Keep it concise and clear.
 
-Your response MUST be a valid JSON array with the following structure:
+Your response MUST ONLY be a valid JSON array with the following structure:
 ```json
 [
     {"title": "Introduction", "content": ["- Key point 1", "- Key point 2"]},
     {"title": "Main Topic", "content": ["- Detail 1", "- Detail 2", "- Detail 3"]}
 ]
 ```
+
+IMPORTANT: 
+- Do not include any text outside the JSON array
+- Do not provide explanations
+- EVERY slide MUST have both a "title" field and a "content" field
+- Only return the valid JSON array
+- Use double quotes for JSON keys and string values
+- The title field is REQUIRED for every slide
 
 Guidelines:
 1. Each bullet point should be limited to 10 words
@@ -42,5 +50,5 @@ Guidelines:
 4. Last slide should be a summary or conclusion
 5. Keep the language clear and professional
 6. Ensure the response is in Vietnamese
-7. Make sure the JSON is valid and properly formatted
+7. Make sure the JSON is valid and properly formatted with double quotes
 """

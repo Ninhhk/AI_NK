@@ -5,6 +5,7 @@ import requests
 import json
 import os
 from pydantic import BaseModel
+from backend.model_management.system_prompt_manager import system_prompt_manager
 
 router = APIRouter()
 
@@ -92,3 +93,30 @@ def set_model(model_name: str = Form(...)):
     global current_model
     current_model = model_name
     return {"model_name": model_name, "message": f"Model changed to {model_name}"}
+
+@router.get("/system-prompt", response_model=Dict[str, str])
+def get_system_prompt():
+    """
+    Get the current system prompt used by models.
+    
+    Returns:
+    - A dictionary containing the current system prompt
+    """
+    return {"system_prompt": system_prompt_manager.get_system_prompt()}
+
+@router.post("/system-prompt", response_model=Dict[str, str])
+def set_system_prompt(system_prompt: str = Form(...)):
+    """
+    Set the system prompt to use for all model interactions.
+    
+    Parameters:
+    - system_prompt: The system prompt to set
+    
+    Returns:
+    - A dictionary containing the updated system prompt
+    """
+    try:
+        system_prompt_manager.set_system_prompt(system_prompt)
+        return {"system_prompt": system_prompt, "message": "System prompt updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -209,6 +209,56 @@ class DocumentRepository:
             cursor.execute("DELETE FROM documents WHERE id = ?", (document_id,))
             conn.commit()
             return cursor.rowcount > 0
+    
+    def get_old_documents(self, cutoff_date) -> List[Dict[str, Any]]:
+        """
+        Get documents older than the specified cutoff date
+        
+        Args:
+            cutoff_date: Datetime object representing the cutoff date
+            
+        Returns:
+            List of document records older than the cutoff date
+        """
+        # Convert datetime to Unix timestamp
+        cutoff_timestamp = int(cutoff_date.timestamp())
+        
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM documents 
+                WHERE created_at < ? 
+                """, 
+                (cutoff_timestamp,)
+            )
+            documents = cursor.fetchall()
+            
+            # Deserialize metadata for each document
+            for doc in documents:
+                if doc.get("meta"):
+                    doc["meta"] = deserialize_meta(doc["meta"])
+                    
+            return documents
+            
+    def get_all_documents(self) -> List[Dict[str, Any]]:
+        """
+        Get all documents in the database
+        
+        Returns:
+            List of all document records
+        """
+        with DatabaseConnection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM documents")
+            documents = cursor.fetchall()
+            
+            # Deserialize metadata for each document
+            for doc in documents:
+                if doc.get("meta"):
+                    doc["meta"] = deserialize_meta(doc["meta"])
+                    
+            return documents
 
 class ChatHistoryRepository:
     """Repository for chat history CRUD operations"""
@@ -347,323 +397,5 @@ class ChatHistoryRepository:
         with DatabaseConnection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM chat_history WHERE document_id = ?", (document_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-
-class SlideRepository:
-    """Repository for slide presentation CRUD operations"""
-    
-    def insert_slide_presentation(
-        self,
-        user_id: str,
-        title: str,
-        slide_count: int,
-        content: Optional[str] = None,
-        json_path: Optional[str] = None,
-        pptx_path: Optional[str] = None,
-        meta: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Insert a new slide presentation into the database
-        
-        Args:
-            user_id: ID of the user who owns this presentation
-            title: Title of the presentation
-            slide_count: Number of slides
-            content: JSON content string
-            json_path: Path to the stored JSON file
-            pptx_path: Path to the stored PPTX file
-            meta: Additional metadata for the presentation
-            
-        Returns:
-            Slide presentation record as a dictionary
-        """
-        slide_id = str(uuid.uuid4())
-        now = int(time.time())
-        
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO slides (
-                    id, user_id, title, slide_count, content, json_path, 
-                    pptx_path, meta, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    slide_id, user_id, title, slide_count, content, 
-                    json_path, pptx_path, serialize_meta(meta), now, now
-                )
-            )
-            conn.commit()
-            
-            # Return the created presentation
-            cursor.execute("SELECT * FROM slides WHERE id = ?", (slide_id,))
-            presentation = cursor.fetchone()
-            
-            # Deserialize metadata
-            if presentation and presentation.get("meta"):
-                presentation["meta"] = deserialize_meta(presentation["meta"])
-                
-            return presentation
-    
-    def get_slide_by_id(self, slide_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a slide presentation by its ID
-        
-        Args:
-            slide_id: The slide presentation ID to retrieve
-            
-        Returns:
-            Slide presentation record or None if not found
-        """
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM slides WHERE id = ?", (slide_id,))
-            presentation = cursor.fetchone()
-            
-            # Deserialize metadata
-            if presentation and presentation.get("meta"):
-                presentation["meta"] = deserialize_meta(presentation["meta"])
-                
-            return presentation
-    
-    def get_slides_by_user(
-        self, 
-        user_id: str, 
-        limit: int = 100, 
-        offset: int = 0
-    ) -> List[Dict[str, Any]]:
-        """
-        Get slide presentations for a specific user
-        
-        Args:
-            user_id: The user ID to get presentations for
-            limit: Maximum number of presentations to return
-            offset: Pagination offset
-            
-        Returns:
-            List of slide presentation records
-        """
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM slides 
-                WHERE user_id = ? 
-                ORDER BY updated_at DESC 
-                LIMIT ? OFFSET ?
-                """, 
-                (user_id, limit, offset)
-            )
-            presentations = cursor.fetchall()
-            
-            # Deserialize metadata for each presentation
-            for pres in presentations:
-                if pres.get("meta"):
-                    pres["meta"] = deserialize_meta(pres["meta"])
-                    
-            return presentations
-    
-    def update_slide_paths(
-        self, 
-        slide_id: str, 
-        json_path: Optional[str] = None, 
-        pptx_path: Optional[str] = None
-    ) -> bool:
-        """
-        Update slide presentation file paths
-        
-        Args:
-            slide_id: The slide presentation ID to update
-            json_path: New path to the JSON file
-            pptx_path: New path to the PPTX file
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        now = int(time.time())
-        
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            
-            # Build update query dynamically based on provided arguments
-            update_parts = []
-            params = []
-            
-            if json_path is not None:
-                update_parts.append("json_path = ?")
-                params.append(json_path)
-                
-            if pptx_path is not None:
-                update_parts.append("pptx_path = ?")
-                params.append(pptx_path)
-                
-            if not update_parts:
-                return False  # Nothing to update
-                
-            update_parts.append("updated_at = ?")
-            params.append(now)
-            
-            params.append(slide_id)  # For WHERE clause
-            
-            query = f"UPDATE slides SET {', '.join(update_parts)} WHERE id = ?"
-            
-            cursor.execute(query, params)
-            conn.commit()
-            return cursor.rowcount > 0
-    
-    def delete_slide(self, slide_id: str) -> bool:
-        """
-        Delete a slide presentation
-        
-        Args:
-            slide_id: The slide presentation ID to delete
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        # First get the presentation to get the file paths
-        presentation = self.get_slide_by_id(slide_id)
-        if not presentation:
-            return False
-            
-        # Delete the files first
-        for path_key in ["json_path", "pptx_path"]:
-            file_path = presentation.get(path_key)
-            if file_path:
-                Storage.delete_file(file_path)
-                
-        # Now delete the database record
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM slides WHERE id = ?", (slide_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-
-class QuizRepository:
-    """Repository for quiz CRUD operations"""
-    
-    def insert_quiz(
-        self,
-        document_id: str,
-        questions_count: int,
-        difficulty: str,
-        content: str,
-        meta: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Insert a new quiz into the database
-        
-        Args:
-            document_id: ID of the document this quiz is based on
-            questions_count: Number of questions in the quiz
-            difficulty: Difficulty level of the quiz
-            content: JSON content string with quiz data
-            meta: Additional metadata for the quiz
-            
-        Returns:
-            Quiz record as a dictionary
-        """
-        quiz_id = str(uuid.uuid4())
-        now = int(time.time())
-        
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO quizzes (
-                    id, document_id, questions_count, difficulty, content, 
-                    meta, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    quiz_id, document_id, questions_count, difficulty, 
-                    content, serialize_meta(meta), now, now
-                )
-            )
-            conn.commit()
-            
-            # Return the created quiz
-            cursor.execute("SELECT * FROM quizzes WHERE id = ?", (quiz_id,))
-            quiz = cursor.fetchone()
-            
-            # Deserialize metadata
-            if quiz and quiz.get("meta"):
-                quiz["meta"] = deserialize_meta(quiz["meta"])
-                
-            return quiz
-    
-    def get_quiz_by_id(self, quiz_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a quiz by its ID
-        
-        Args:
-            quiz_id: The quiz ID to retrieve
-            
-        Returns:
-            Quiz record or None if not found
-        """
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM quizzes WHERE id = ?", (quiz_id,))
-            quiz = cursor.fetchone()
-            
-            # Deserialize metadata
-            if quiz and quiz.get("meta"):
-                quiz["meta"] = deserialize_meta(quiz["meta"])
-                
-            return quiz
-    
-    def get_quizzes_by_document(
-        self, 
-        document_id: str, 
-        limit: int = 50, 
-        offset: int = 0
-    ) -> List[Dict[str, Any]]:
-        """
-        Get quizzes for a specific document
-        
-        Args:
-            document_id: The document ID to get quizzes for
-            limit: Maximum number of quizzes to return
-            offset: Pagination offset
-            
-        Returns:
-            List of quiz records
-        """
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM quizzes 
-                WHERE document_id = ? 
-                ORDER BY created_at DESC 
-                LIMIT ? OFFSET ?
-                """, 
-                (document_id, limit, offset)
-            )
-            quizzes = cursor.fetchall()
-            
-            # Deserialize metadata for each quiz
-            for quiz in quizzes:
-                if quiz.get("meta"):
-                    quiz["meta"] = deserialize_meta(quiz["meta"])
-                    
-            return quizzes
-    
-    def delete_quiz(self, quiz_id: str) -> bool:
-        """
-        Delete a quiz
-        
-        Args:
-            quiz_id: The quiz ID to delete
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        with DatabaseConnection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM quizzes WHERE id = ?", (quiz_id,))
             conn.commit()
             return cursor.rowcount > 0

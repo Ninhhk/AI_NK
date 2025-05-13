@@ -12,6 +12,7 @@ from backend.document_analysis.document_service import DocumentAnalysisService
 from backend.document_analysis.config import OLLAMA_CONFIG
 from utils.repository import DocumentRepository, ChatHistoryRepository
 from utils.database import Storage
+from backend.model_management.system_prompt_manager import system_prompt_manager
 
 router = APIRouter()
 
@@ -34,8 +35,6 @@ def get_current_user():
 async def analyze_document(
     query_type: str = Form(...),
     user_query: Optional[str] = Form(None),
-    start_page: int = Form(0),
-    end_page: int = Form(-1),
     file: Optional[UploadFile] = File(None),
     files: Optional[List[UploadFile]] = None,
     extra_files_1: Optional[UploadFile] = File(None),
@@ -44,6 +43,7 @@ async def analyze_document(
     extra_files_4: Optional[UploadFile] = File(None),
     extra_files_5: Optional[UploadFile] = File(None),
     model_name: Optional[str] = Form(None),
+    system_prompt: Optional[str] = Form(None),
     current_user: Dict = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
@@ -59,6 +59,7 @@ async def analyze_document(
     - files: List of files to analyze
     - extra_files_1-5: Additional files to analyze
     - model_name: Optional Ollama model name to use for analysis
+    - system_prompt: Optional custom system prompt to control AI behavior
     """
     # Gather all files from different parameters
     all_files = []
@@ -81,7 +82,8 @@ async def analyze_document(
             all_files.append(extra_file)
             logger.debug(f"Added file from 'extra_files_{i+1}' parameter: {extra_file.filename}")
     
-    # Debug information    logger.debug(f"Total files collected: {len(all_files)}")
+    # Debug information
+    logger.debug(f"Total files collected: {len(all_files)}")
     for i, f in enumerate(all_files):
         logger.debug(f"File {i+1}: {f.filename}")
     
@@ -140,8 +142,7 @@ async def analyze_document(
                 file_content=file_contents[0],
                 query_type=query_type,
                 user_query=user_query,
-                start_page=start_page,
-                end_page=end_page,
+                system_prompt=system_prompt,
             )
             
             # Store in chat history if it's a QA query
@@ -149,14 +150,14 @@ async def analyze_document(
                 chat_entry = chat_history_repo.add_chat_entry(
                     document_id=document_ids[0],
                     user_query=user_query,
-                    system_response=result.get("result", ""),
-                    meta={
-                        "query_type": query_type,
-                        "page_range": {"start": start_page, "end": end_page}
+                    system_response=result.get("result", ""),                    meta={
+                        "query_type": query_type
                     }
                 )
                 # Add chat history ID to result
                 result["chat_id"] = chat_entry["id"]
+                logger.debug(f"Added chat history entry: document_id={document_ids[0]}, user_query='{user_query[:50]}...'")
+                logger.debug(f"Chat entry added with ID: {chat_entry['id']}")
         else:
             # For multiple files, use the multi-document analysis method
             logger.info(f"Using multi-file analysis method for {len(file_contents)} files")
@@ -165,8 +166,7 @@ async def analyze_document(
                 filenames=filenames,
                 query_type=query_type,
                 user_query=user_query,
-                start_page=start_page,
-                end_page=end_page,
+                system_prompt=system_prompt,
             )
             
             # Store in chat history with references to all documents
@@ -193,10 +193,8 @@ async def analyze_document(
                 chat_entry = chat_history_repo.add_chat_entry(
                     document_id=placeholder_document["id"],
                     user_query=user_query,
-                    system_response=result.get("result", ""),
-                    meta={
+                    system_response=result.get("result", ""),                    meta={
                         "query_type": query_type,
-                        "page_range": {"start": start_page, "end": end_page},
                         "document_ids": document_ids,
                         "document_names": filenames
                     }
@@ -229,6 +227,17 @@ async def get_chat_history(document_id: str, limit: int = 50, offset: int = 0) -
     Retrieve chat history for a specific document from database.
     """
     try:
+        # Check if document exists first
+        document = document_repo.get_document_by_id(document_id)
+        if not document:
+            logger.warning(f"Document not found: {document_id}")
+            return {
+                "history": [],
+                "document_id": document_id,
+                "count": 0,
+                "error": "Document not found"
+            }
+            
         # Check if it's a regular document ID or a multi-document ID
         if document_id.startswith("multi_"):
             # For multi-document chats, retrieve directly by the combined ID
@@ -238,8 +247,19 @@ async def get_chat_history(document_id: str, limit: int = 50, offset: int = 0) -
             chat_history = chat_history_repo.get_chat_history_by_document(document_id, limit, offset)
             
         # Check if this is a multi-document placeholder
-        document = document_repo.get_document_by_id(document_id)
         is_multi_document = document and document.get("meta", {}).get("is_multi_document", False)
+        
+        # Log the chat history for debugging
+        logger.debug(f"Retrieved {len(chat_history)} chat entries for document_id: {document_id}")
+        if chat_history:
+            logger.debug(f"First chat entry: {chat_history[0]}")
+        else:
+            logger.debug("No chat entries found")
+        
+        # Convert 'created_at' to 'timestamp' for frontend compatibility
+        for entry in chat_history:
+            if 'created_at' in entry and 'timestamp' not in entry:
+                entry['timestamp'] = entry['created_at']
         
         return {
             "history": chat_history,
@@ -250,7 +270,13 @@ async def get_chat_history(document_id: str, limit: int = 50, offset: int = 0) -
     except Exception as e:
         logger.error(f"Error retrieving chat history: {str(e)}")
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Error retrieving chat history: {str(e)}")
+        # Return empty result instead of raising an exception
+        return {
+            "history": [],
+            "document_id": document_id,
+            "count": 0,
+            "error": f"Error retrieving chat history: {str(e)}"
+        }
 
 @router.get("/documents")
 async def get_documents(
@@ -333,9 +359,8 @@ async def generate_quiz(
     file: UploadFile = File(...),
     num_questions: int = Form(5),
     difficulty: str = Form("medium"),
-    start_page: int = Form(0),
-    end_page: int = Form(-1),
     model_name: Optional[str] = Form(None),
+    system_prompt: Optional[str] = Form(None),
     current_user: Dict = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
@@ -348,6 +373,7 @@ async def generate_quiz(
     - start_page: The page to start from (0-based)
     - end_page: The page to end at (-1 for all pages)
     - model_name: Optional Ollama model name to use for generation
+    - system_prompt: Optional custom system prompt to control AI behavior
     """
     try:
         file_content = await file.read()
@@ -368,8 +394,7 @@ async def generate_quiz(
             size=len(file_content),
             meta={
                 "original_filename": file.filename,
-                "content_type": file.content_type,
-                "purpose": "quiz_generation"
+                "content_type": file.content_type,                "purpose": "quiz_generation"
             }
         )
         
@@ -377,8 +402,7 @@ async def generate_quiz(
             file_content=file_content,
             num_questions=num_questions,
             difficulty=difficulty,
-            start_page=start_page,
-            end_page=end_page,
+            system_prompt=system_prompt,
         )
         
         # Add document ID to result for frontend reference
@@ -388,8 +412,7 @@ async def generate_quiz(
         document_repo.update_document_meta(document["id"], {
             "quiz": {
                 "num_questions": num_questions,
-                "difficulty": difficulty,
-                "page_range": {"start": start_page, "end": end_page}
+                "difficulty": difficulty
             }
         })
         
@@ -432,3 +455,30 @@ async def health_check() -> Dict[str, Any]:
     Health check endpoint
     """
     return {"status": "healthy"}
+
+@router.get("/system-prompt")
+async def get_system_prompt() -> Dict[str, str]:
+    """
+    Get the current system prompt used for document analysis.
+    
+    Returns:
+    - A dictionary containing the current system prompt
+    """
+    return {"system_prompt": system_prompt_manager.get_system_prompt()}
+
+@router.post("/system-prompt")
+async def set_system_prompt(system_prompt: str = Form(...)) -> Dict[str, str]:
+    """
+    Set the system prompt to use for document analysis.
+    
+    Parameters:
+    - system_prompt: The system prompt to set
+    
+    Returns:
+    - A dictionary containing the updated system prompt
+    """
+    try:
+        system_prompt_manager.set_system_prompt(system_prompt)
+        return {"system_prompt": system_prompt, "message": "System prompt updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

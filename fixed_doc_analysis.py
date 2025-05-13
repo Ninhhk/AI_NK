@@ -129,7 +129,8 @@ def load_chat_history():
     """Load chat history and store in session state using a simplified in-memory approach"""
     if st.session_state.document_id:
         try:
-            st.write(f"Loading chat history for document ID: {st.session_state.document_id}")
+            if st.session_state.debug_mode:
+                st.write(f"Loading chat history for document ID: {st.session_state.document_id}")
             
             # Initialize in-memory chat history if not present
             if 'in_memory_chat_history' not in st.session_state:
@@ -149,18 +150,6 @@ def load_chat_history():
                 st.info(f"Chat history loaded from memory: {len(st.session_state.chat_history)} messages")
             
             return True
-        except requests.exceptions.ConnectionError:
-            if st.session_state.debug_mode:
-                st.error("Cannot connect to server. Please check if the backend server has been started.")
-            else:
-                st.error("Cannot connect to server. Please try again later.")
-            return False
-        except requests.exceptions.HTTPError as e:
-            if st.session_state.debug_mode:
-                st.error(f"HTTP error when loading chat history: {e}")
-            if "404" in str(e):
-                st.warning("API endpoint for chat history does not exist. Please update the backend code.")
-            return False
         except Exception as e:
             if st.session_state.debug_mode:
                 st.error(f"Error loading chat history: {e}")
@@ -179,125 +168,6 @@ def get_streamlit_version():
         return pkg_resources.get_distribution("streamlit").version
     except:
         return "unknown"
-
-def display_analysis_results(result, query_type, start_time):
-    """Display analysis results in a consistent format for both QA and summary modes."""
-    # Check if we have document information to display
-    has_multiple_docs = "document_count" in result and result["document_count"] > 1
-    
-    # Display result header and result content
-    st.markdown("""
-        <div class="card fade-in">
-            <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📊 Results
-            </h2>
-            <div style='color: var(--text-primary);'>
-    """, unsafe_allow_html=True)
-    
-    # Format result content to highlight citations
-    if query_type == "qa" and "answer" in result:
-        content = result["answer"]  # In QA mode, the answer is in result["answer"]
-    elif "result" in result:
-        content = result["result"]  # In summary mode, the result is in result["result"]
-    else:
-        content = "No result content available."
-    
-    # If we have multiple documents, add a document reference section
-    if has_multiple_docs and "documents" in result:
-        st.markdown("""
-            <div style="background-color: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #3498db;">
-                <h4 style="margin-top: 0; color: #2c3e50;">Documents used:</h4>
-                <ul style="margin-bottom: 0;">
-        """, unsafe_allow_html=True)
-        
-        for doc in result.get("documents", []):
-            st.markdown(f"""
-                <li>
-                    <strong>[{doc['id']}]</strong>: {doc['filename']}
-                </li>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("""
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # Format the content to highlight citations like [doc_1_abc123]
-    import re
-    if has_multiple_docs:
-        # Find all citation patterns like [doc_X_XXXXX] in the text
-        citation_pattern = r'\[(doc_\d+_[a-z0-9]+)\]'
-        
-        # Split by citations to preserve formatting
-        parts = re.split(f'({citation_pattern})', content)
-        
-        formatted_parts = []
-        for i, part in enumerate(parts):
-            # Check if this part is a citation
-            if i % 2 == 1 and re.match(citation_pattern, part):
-                # Format as a citation badge
-                citation_id = part[1:-1]  # Remove brackets
-                formatted_parts.append(f'<span style="background-color: #e1f5fe; padding: 2px 6px; border-radius: 3px; color: #0277bd; font-weight: bold; font-size: 0.9em;">{part}</span>')
-            else:
-                formatted_parts.append(part)
-        
-        # Join parts back together
-        formatted_content = ''.join(formatted_parts)
-        st.markdown(formatted_content, unsafe_allow_html=True)
-    else:
-        # Regular content without special formatting
-        st.markdown(content)
-    
-    st.markdown("</div></div>", unsafe_allow_html=True)
-    
-    # Display timing information
-    st.markdown(f"""
-        <div class="card fade-in" style='margin-top: 1rem;'>
-            <p style='margin: 0; color: var(--text-primary);'>
-                <strong>⏱️ Execution time:</strong> {time.time() - start_time:.2f} seconds
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Display debug information if enabled
-    if st.session_state.debug_mode and "debug" in result:
-        st.expander("Debug Information").write(result["debug"])
-    
-    # Add a standalone chat interface if this is a document that has been analyzed
-    if st.session_state.document_id and query_type == "qa":
-        st.markdown("""
-            <div class="card fade-in" style='margin-top: 2rem;'>
-                <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                    💬 Ask More Questions
-                </h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Get the process_question callback function
-        def process_follow_up_question(question: str) -> str:
-            """Send the follow-up question to the API and return the response"""
-            try:
-                response = requests.post(
-                    f"{API_BASE_URL}/api/documents/{st.session_state.document_id}/qa",
-                    json={"query": question}
-                )
-                response.raise_for_status()
-                result = response.json()
-                
-                if "answer" in result:
-                    return result["answer"]
-                return str(result)
-            except Exception as e:
-                return f"Error processing question: {str(e)}"
-        
-        # Import and call the chat_interface function
-        from frontend.components.conversation_simple import chat_interface
-        
-        # Display the chat interface
-        chat_interface(
-            document_id=st.session_state.document_id,
-            on_submit_callback=process_follow_up_question
-        )
 
 def refresh_page():
     """Refresh the page using the appropriate Streamlit method based on version compatibility."""
@@ -328,7 +198,7 @@ if 'chat_history_last_loaded' not in st.session_state:
 
 # Debug mode flag - set to True to enable debug information
 if 'debug_mode' not in st.session_state:
-    st.session_state.debug_mode = True  # Change to False after debugging
+    st.session_state.debug_mode = False
 
 # Create a custom sidebar with document upload, function selection, and system prompt
 with st.sidebar:
@@ -351,7 +221,7 @@ with st.sidebar:
     # Display current model information
     current_model = get_current_model()
     if current_model:
-        st.info(f"🤖 Using model: **{current_model}**. You can change the model in the Model Management page.", icon="ℹ️")
+        st.info(f"🤖 Using model: **{current_model}**.", icon="ℹ️")
     
     st.markdown("""
         <div class="card fade-in">
@@ -390,11 +260,14 @@ with st.sidebar:
         else:
             st.error("❌ Failed to save system prompt")
     
-    # Add a divider at the bottom
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("**App Info**")
-    st.markdown("Version: 1.0.0")
-    st.markdown("© 2025 AI Document Analysis")
+    # Debug mode toggle
+    debug_enabled = st.checkbox("Enable Debug Mode", 
+                               value=st.session_state.debug_mode,
+                               key="sidebar_debug_toggle")
+    
+    if debug_enabled != st.session_state.debug_mode:
+        st.session_state.debug_mode = debug_enabled
+        refresh_page()
 
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
@@ -441,6 +314,7 @@ with tab1:
             if st.button("🚀 Analyze Document", type="primary", use_container_width=True):
                 result = None
                 start = time.time()
+                
                 with st.status("🔄 Analyzing document...", expanded=True) as status:
                     try:
                         model_name = get_current_model()
@@ -467,14 +341,11 @@ with tab1:
                             st.session_state.document_id = result["multi_document_id"]
                             if st.session_state.debug_mode:
                                 st.info(f"Using multi_document_id: {result['multi_document_id']}")
-                                
-                        # If this was a QA query, setup chat history
+                        
+                        # If this was a QA query, reload chat history
                         if query_type == "qa" and st.session_state.document_id:
                             # Add a slight delay to allow the backend to update
                             time.sleep(0.5)
-                            
-                            # Add the QA result to our in-memory chat history
-                            from frontend.components.conversation_simple import add_chat_message, initialize_chat_history
                             
                             # Initialize chat history for this document
                             initialize_chat_history(st.session_state.document_id)
@@ -501,12 +372,116 @@ with tab1:
                         status.update(label="❌ Error", state="error", expanded=False)
                         st.error(f"⚠️ An error occurred: {e}")
                         result = None
-                
-                # Display results if available in QA mode
+
                 if result:
-                    # Call the common results display function
-                    display_analysis_results(result, query_type, start)
+                    # Check if we have document information to display
+                    has_multiple_docs = "document_count" in result and result["document_count"] > 1
+                    
+                    # Display result header and result content
+                    st.markdown("""
+                        <div class="card fade-in">
+                            <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
+                                📊 Results
+                            </h2>
+                            <div style='color: var(--text-primary);'>
+                    """, unsafe_allow_html=True)
+                    
+                    # Format result content to highlight citations
+                    content = result["result"]
+                    
+                    # If we have multiple documents, add a document reference section
+                    if has_multiple_docs and "documents" in result:
+                        st.markdown("""
+                            <div style="background-color: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #3498db;">
+                                <h4 style="margin-top: 0; color: #2c3e50;">Documents used:</h4>
+                                <ul style="margin-bottom: 0;">
+                        """, unsafe_allow_html=True)
                         
+                        for doc in result.get("documents", []):
+                            st.markdown(f"""
+                                <li>
+                                    <strong>[{doc['id']}]</strong>: {doc['filename']}
+                                </li>
+                            """, unsafe_allow_html=True)
+                        
+                        st.markdown("""
+                                </ul>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Format the content to highlight citations like [doc_1_abc123]
+                    import re
+                    if has_multiple_docs:
+                        # Find all citation patterns like [doc_X_XXXXX] in the text
+                        citation_pattern = r'\[(doc_\d+_[a-z0-9]+)\]'
+                        
+                        # Split by citations to preserve formatting
+                        parts = re.split(f'({citation_pattern})', content)
+                        
+                        formatted_parts = []
+                        for i, part in enumerate(parts):
+                            # Check if this part is a citation
+                            if i % 2 == 1 and re.match(citation_pattern, part):
+                                # Format as a citation badge
+                                citation_id = part[1:-1]  # Remove brackets
+                                formatted_parts.append(f'<span style="background-color: #e1f5fe; padding: 2px 6px; border-radius: 3px; color: #0277bd; font-weight: bold; font-size: 0.9em;">{part}</span>')
+                            else:
+                                formatted_parts.append(part)
+                        
+                        # Join parts back together
+                        formatted_content = ''.join(formatted_parts)
+                        st.markdown(formatted_content, unsafe_allow_html=True)
+                    else:
+                        # Regular content without special formatting
+                        st.markdown(content)
+                    
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+                    
+                    # Display timing information
+                    st.markdown(f"""
+                        <div class="card fade-in" style='margin-top: 1rem;'>
+                            <p style='margin: 0; color: var(--text-primary);'>
+                                <strong>⏱️ Execution time:</strong> {time.time() - start:.2f} seconds
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                      
+                    # Display debug information if enabled
+                    if st.session_state.debug_mode and "debug" in result:
+                        st.expander("Debug Information").write(result["debug"])
+                    
+                    # Add a standalone chat interface if this is a document that has been analyzed
+                    if st.session_state.document_id and query_type == "qa":
+                        st.markdown("""
+                            <div class="card fade-in" style='margin-top: 2rem;'>
+                                <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
+                                    💬 Ask More Questions
+                                </h2>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Get the process_question callback function
+                        def process_follow_up_question(question: str) -> str:
+                            """Send the follow-up question to the API and return the response"""
+                            try:
+                                response = requests.post(
+                                    f"{API_BASE_URL}/api/documents/{st.session_state.document_id}/qa",
+                                    json={"query": question}
+                                )
+                                response.raise_for_status()
+                                result = response.json()
+                                
+                                if "answer" in result:
+                                    return result["answer"]
+                                return str(result)
+                            except Exception as e:
+                                return f"Error processing question: {str(e)}"
+                        
+                        # Display the chat interface
+                        chat_interface(
+                            document_id=st.session_state.document_id,
+                            on_submit_callback=process_follow_up_question
+                        )
         else:
             # Summary mode
             st.markdown("""
@@ -521,6 +496,7 @@ with tab1:
             if st.button("🚀 Generate Summary", type="primary", use_container_width=True):
                 result = None
                 start = time.time()
+                
                 with st.status("🔄 Generating summary...", expanded=True) as status:
                     try:
                         model_name = get_current_model()
@@ -545,47 +521,64 @@ with tab1:
                         elif "multi_document_id" in result:
                             st.session_state.document_id = result["multi_document_id"]
                             if st.session_state.debug_mode:
-                                st.info(f"Using multi_document_id: {result['multi_document_id']}")                        
-                        # Load chat history
-                        if st.session_state.document_id:
-                            load_chat_history()
-                            
-                            # For QA-like interactions in summary mode
-                            if "answer" in result:
-                                # Add a slight delay to allow the backend to update
-                                time.sleep(0.5)
-                                
-                                # Add the QA result to our in-memory chat history
-                                from frontend.components.conversation_simple import add_chat_message, initialize_chat_history
-                                
-                                # Initialize chat history for this document
-                                initialize_chat_history(st.session_state.document_id)
-                                
-                                # Add the new message pair
-                                add_chat_message(
-                                    document_id=st.session_state.document_id,
-                                    user_query="Generate a summary of this document",
-                                    system_response=result["answer"]
-                                )
-                                
-                                # Debug the document ID we're using
-                                if st.session_state.debug_mode:
-                                    st.write(f"Analyzing complete, using document_id: {st.session_state.document_id}")
-                                    
-                                # Load chat history to update the display
-                                load_chat_history()
-                                
-                                # Debug the full result object
-                                if st.session_state.debug_mode:
-                                    st.json(result)
+                                st.info(f"Using multi_document_id: {result['multi_document_id']}")
                     except Exception as e:
                         status.update(label="❌ Error", state="error", expanded=False)
                         st.error(f"⚠️ An error occurred: {e}")
                         result = None
-
-            if result:
-                # Call the common results display function
-                display_analysis_results(result, query_type, start)
+                
+                if result:
+                    # Display result header and result content
+                    st.markdown("""
+                        <div class="card fade-in">
+                            <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
+                                📊 Summary
+                            </h2>
+                            <div style='color: var(--text-primary);'>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display the summary
+                    content = result["result"]
+                    st.markdown(content, unsafe_allow_html=True)
+                    
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+                    
+                    # Display timing information
+                    st.markdown(f"""
+                        <div class="card fade-in" style='margin-top: 1rem;'>
+                            <p style='margin: 0; color: var(--text-primary);'>
+                                <strong>⏱️ Execution time:</strong> {time.time() - start:.2f} seconds
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display debug information if enabled
+                    if st.session_state.debug_mode and "debug" in result:
+                        st.expander("Debug Information").write(result["debug"])
+    else:
+        # If no files uploaded, show a welcome message
+        st.markdown("""
+            <div class="card fade-in" style="text-align: center; padding: 2rem;">
+                <h2 style='color: var(--primary-color);'>👋 Welcome to Document Analysis</h2>
+                <p style='color: var(--text-secondary); font-size: 1.2em;'>
+                    To get started, upload a document using the file uploader in the sidebar.
+                </p>
+                <img src="https://img.icons8.com/clouds/200/upload-document.png" style="margin: 2rem 0;">
+                <p style='color: var(--text-secondary);'>
+                    You can analyze documents with advanced AI capabilities including:
+                </p>
+                <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 1rem;">
+                    <div style="padding: 1rem; background-color: #e1f5fe; border-radius: 10px; width: 200px;">
+                        <h3 style="margin-top: 0;">📝 Summarization</h3>
+                        <p>Get concise summaries of documents</p>
+                    </div>
+                    <div style="padding: 1rem; background-color: #e8f5e9; border-radius: 10px; width: 200px;">
+                        <h3 style="margin-top: 0;">❓ Q&A</h3>
+                        <p>Ask specific questions about document content</p>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
 with tab2:
     st.markdown("""

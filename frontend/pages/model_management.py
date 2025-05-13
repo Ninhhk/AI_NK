@@ -4,6 +4,12 @@ import json
 import time
 import os
 from io import BytesIO
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from frontend.components.system_prompt import system_prompt_ui
 
 # Set page config for better appearance
 st.set_page_config(
@@ -148,6 +154,29 @@ def upload_model(file, model_name=None):
     st.warning("Model file uploads are not supported in this version")      
     return False
 
+def get_system_prompt():
+    """Get the current system prompt."""
+    try:
+        response = requests.get(f"{OLLAMA_API_URL}/system-prompt")
+        response.raise_for_status()
+        return response.json()["system_prompt"]
+    except Exception as e:
+        st.error(f"Error fetching system prompt: {e}")
+        return ""
+
+def set_system_prompt(prompt):
+    """Set the system prompt."""
+    try:
+        response = requests.post(
+            f"{OLLAMA_API_URL}/system-prompt",
+            data={"system_prompt": prompt}
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Error setting system prompt: {e}")
+        return None
+
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
@@ -168,7 +197,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Tabs for different sections
-tab1, tab2, tab3 = st.tabs(["Available Models", "Add New Model", "Active Downloads"])
+tab1, tab2, tab3, tab4 = st.tabs(["Available Models", "Add New Model", "System Prompt", "Active Downloads"])
 
 with tab1:
     # Fetch current model
@@ -278,6 +307,58 @@ with tab2:
                     st.experimental_rerun()
 
 with tab3:
+    st.markdown("### Global System Prompt")
+    st.markdown("""
+    <div class="card fade-in">
+        <p>
+            The system prompt is used across all features of the application to control how the AI responds. 
+            This is a global setting that affects slide generation, document analysis, and all other AI interactions.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # First get the current system prompt from the API
+    current_system_prompt = ""
+    try:
+        current_system_prompt = get_system_prompt()
+    except:
+        # If API is not available, use an empty default prompt
+        pass
+        
+    # Show the system prompt UI component
+    system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="model_management")
+    
+    # Add a button to save the system prompt globally
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("💾 Save System Prompt Globally", type="primary"):
+            result = set_system_prompt(system_prompt)
+            if result:
+                st.success("✅ System prompt saved globally and will be used across all features")
+            else:
+                st.error("❌ Failed to save system prompt")
+    
+    with col2:
+        st.warning("This will update the system prompt for **all features** of the application.")
+    
+    # Add a button to run the set_system_prompt.py script
+    st.markdown("---")
+    st.markdown("### Reset to Vietnamese Prompt")
+    
+    if st.button("🔄 Reset to Vietnamese Prompt"):
+        try:
+            vietnamese_prompt = "must answer in vietnamese, phải trả lời bằng tiếng việt"
+            result = set_system_prompt(vietnamese_prompt)
+            if result:
+                st.success("✅ System prompt reset to Vietnamese response requirement")
+                time.sleep(1)
+                st.experimental_rerun()
+            else:
+                st.error("❌ Failed to reset system prompt")
+        except Exception as e:
+            st.error(f"Error resetting system prompt: {e}")
+
+with tab4:
     st.markdown("### Active Downloads")
     
     # Auto-refresh for download progress

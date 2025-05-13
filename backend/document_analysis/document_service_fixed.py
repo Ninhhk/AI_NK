@@ -17,6 +17,8 @@ from langchain.chains import LLMChain
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from .config import OLLAMA_CONFIG, CHAT_HISTORY_ENABLED, MAX_CHAT_HISTORY_ITEMS
+from backend.model_management.global_model_config import global_model_config
+from backend.model_management.system_prompt_manager import system_prompt_manager
 
 def is_chinese(char: str) -> bool:
     """Check if a character is Chinese."""
@@ -60,11 +62,11 @@ def sanitize_quiz_content(content: str) -> str:
         if not cleaned_line:
             continue
             
-        if re.match(r'^Question\s+\d+', cleaned_line):
+        if re.match(r'^Question\s+\d+', cleaned_line) or cleaned_line.startswith("Câu "):
             sanitized_lines.extend(['', cleaned_line])
         elif re.match(r'^[A-D]\.', cleaned_line):
             sanitized_lines.append(cleaned_line)
-        elif 'Correct answer:' in cleaned_line:
+        elif 'Correct answer:' in cleaned_line or 'Đáp án đúng:' in cleaned_line:
             sanitized_lines.extend([cleaned_line, ''])
         else:
             sanitized_lines.append(cleaned_line)
@@ -81,6 +83,12 @@ class DocumentAnalysisService:
         base_url: str = OLLAMA_CONFIG["base_url"],
         temperature: float = OLLAMA_CONFIG["temperature"],
     ):
+        # Check if a global model is set, and use it if available
+        global_model = global_model_config.get_model()
+        if global_model:
+            model_name = global_model
+            logging.getLogger(__name__).info(f"Using globally configured model: {model_name}")
+        
         self.model_name = model_name
         self.temperature = temperature
         self.base_url = base_url
@@ -89,6 +97,12 @@ class DocumentAnalysisService:
         self.chat_histories = {}
         
     def _initialize_model(self) -> Ollama:
+        # Check if a global model is set, and use it if available and different from current
+        global_model = global_model_config.get_model()
+        if global_model and global_model != self.model_name:
+            self.model_name = global_model
+            logging.getLogger(__name__).info(f"Updating to globally configured model: {self.model_name}")
+            
         return Ollama(
             model=self.model_name,
             base_url=self.base_url,
@@ -100,10 +114,20 @@ class DocumentAnalysisService:
         if model_name != self.model_name:
             self.model_name = model_name
             self.llm = self._initialize_model()
-            logging.getLogger(__name__).info(f"Changed model to {model_name}")
+            
+            # Update the global model configuration
+            global_model_config.set_model(model_name)
+            
+            logging.getLogger(__name__).info(f"Changed model to {model_name} and updated global config")
     
     def get_current_model(self) -> str:
         """Get the current model name."""
+        # Always check global config first
+        global_model = global_model_config.get_model()
+        if global_model and global_model != self.model_name:
+            # Update local model to match global model
+            self.set_model(global_model)
+            
         return self.model_name
 
     def _load_document(self, file_path: str, start_page: int = 0, end_page: int = -1) -> List[Any]:
@@ -156,6 +180,7 @@ class DocumentAnalysisService:
         user_query: Optional[str] = None,
         start_page: int = 0,
         end_page: int = -1,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, str]:
         document_id = self._generate_document_id(file_content)
         
@@ -185,6 +210,11 @@ Requirements:
 5. Include important details but avoid unnecessary information
 
 Summary:"""
+                
+                # If a custom system prompt is provided, use it
+                if system_prompt:
+                    summary_template = system_prompt_manager.apply_system_prompt(summary_template, 
+                                                                                 {"custom_instructions": system_prompt})
                 
                 summary_prompt = PromptTemplate(
                     input_variables=["text"],
@@ -226,6 +256,11 @@ Guidelines:
 
 Answer:"""
                 
+                # If a custom system prompt is provided, use it
+                if system_prompt:
+                    qa_template = system_prompt_manager.apply_system_prompt(qa_template, 
+                                                                           {"custom_instructions": system_prompt})
+                
                 qa_prompt = PromptTemplate(
                     input_variables=["context", "question"],
                     template=qa_template
@@ -237,22 +272,19 @@ Answer:"""
                 self.add_to_chat_history(document_id, user_query, result)
                 
                 return {"result": result, "document_id": document_id}
-            
             else:
-                raise ValueError(f"Unknown query type: {query_type}")
-                
+                raise ValueError(f"Unknown query type: {query_type}")                
         finally:
             os.unlink(temp_path)
-            
+        
         return {"result": "Analysis completed successfully"}
-
+        
     def generate_quiz(
         self,
         file_content: bytes,
         num_questions: int = 5,
         difficulty: str = "medium",
-        start_page: int = 0,
-        end_page: int = -1,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate quiz questions from a single document."""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
@@ -260,7 +292,9 @@ Answer:"""
             temp_path = temp_file.name
 
         try:
-            pages = self._load_document(temp_path, start_page, end_page)
+            # Load the entire document
+            loader = PyPDFLoader(temp_path)
+            pages = loader.load()
             text_splitter = RecursiveCharacterTextSplitter()
             texts = text_splitter.split_documents(pages)
             
@@ -276,17 +310,27 @@ Requirements:
 2. Each question must have 4 options (A, B, C, D).
 3. Indicate the correct answer for each question.
 4. Difficulty: {difficulty}
+5. Write all questions and answers in Vietnamese.
 
 Format strictly:
-Question 1: [question text]
-A. [option A]
-B. [option B]
-C. [option C]
-D. [option D]
-Correct answer: [A/B/C/D]
+Câu 1: [question text in Vietnamese]
+A. [option A in Vietnamese]
+B. [option B in Vietnamese]
+C. [option C in Vietnamese]
+D. [option D in Vietnamese]
+Đáp án đúng: [A/B/C/D]
 
-Continue in this format until Question {num_questions}."""
-        
+Continue in this format until Câu {num_questions}."""
+            
+            # If a custom system prompt is provided, use it
+            if system_prompt:
+                quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
+                                                                      {"custom_instructions": system_prompt})
+            else:
+                # Apply default system prompt (Vietnamese requirement)
+                quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
+                                                                      {"custom_instructions": "Phải trả lời bằng tiếng Việt. KHÔNG được dùng tiếng Anh."})
+            
             quiz_prompt = PromptTemplate(
                 input_variables=["text", "num_questions", "difficulty"],
                 template=quiz_template
@@ -303,34 +347,37 @@ Continue in this format until Question {num_questions}."""
             
             sanitized_result = sanitize_quiz_content(result)
             return {"result": sanitized_result}
-        
         finally:
             os.unlink(temp_path)
-
+    
     def generate_quiz_multiple(
         self,
         file_contents: List[bytes],
         filenames: List[str],
         num_questions: int = 5,
         difficulty: str = "medium",
-        start_page: int = 0,
-        end_page: int = -1,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate a quiz from multiple documents."""
         import tempfile, os
         docs_text = []
+        
         for content, filename in zip(file_contents, filenames):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tf:
                 tf.write(content)
                 temp_path = tf.name
+                
             try:
-                pages = self._load_document(temp_path, start_page, end_page)
+                # Load the entire document
+                loader = PyPDFLoader(temp_path)
+                pages = loader.load()
                 splitter = RecursiveCharacterTextSplitter()
                 chunks = splitter.split_documents(pages)
                 combined = "\n\n".join([doc.page_content for doc in chunks])
                 docs_text.append(f"### Document: {filename}\n{combined}")
             finally:
                 os.unlink(temp_path)
+        
         all_text = "\n\n---\n\n".join(docs_text)
         
         quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the following documents and their content.
@@ -342,16 +389,26 @@ Requirements:
 2. Each question must have 4 options (A, B, C, D).
 3. Indicate the correct answer for each question.
 4. Difficulty: {difficulty}
+5. Write all questions and answers in Vietnamese.
 
 Format strictly:
-Question 1: [question text]
-A. [option A]
-B. [option B]
-C. [option C]
-D. [option D]
-Correct answer: [A/B/C/D]
+Câu 1: [question text in Vietnamese]
+A. [option A in Vietnamese]
+B. [option B in Vietnamese]
+C. [option C in Vietnamese]
+D. [option D in Vietnamese]
+Đáp án đúng: [A/B/C/D]
 
-Continue in this format until Question {num_questions}."""
+Continue in this format until Câu {num_questions}."""
+        
+        # If a custom system prompt is provided, use it
+        if system_prompt:
+            quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
+                                                                   {"custom_instructions": system_prompt})
+        else:
+            # Apply default system prompt (Vietnamese requirement)
+            quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
+                                                                   {"custom_instructions": "Phải trả lời bằng tiếng Việt. KHÔNG được dùng tiếng Anh."})
         
         quiz_prompt = PromptTemplate(
             input_variables=["all_text", "num_questions", "difficulty"],
@@ -363,13 +420,14 @@ Continue in this format until Question {num_questions}."""
         result = chain.invoke({"all_text": all_text, "num_questions": num_questions, "difficulty": difficulty})["text"]
         sanitized = sanitize_quiz_content(result)
         return {"result": sanitized}
-
+        
     def analyze_multiple_documents(
         self,
         file_contents: List[bytes],
         filenames: List[str],
         query_type: str = "summary",
         user_query: Optional[str] = None,
+        system_prompt: Optional[str] = None,
         start_page: int = 0,
         end_page: int = -1,
     ) -> Dict[str, Any]:
@@ -434,11 +492,11 @@ Continue in this format until Question {num_questions}."""
                     })
             
             if query_type == "summary":
-                return self._generate_multi_document_summary(documents, combined_hash)
+                return self._generate_multi_document_summary(documents, combined_hash, system_prompt)
             elif query_type == "qa":
                 if not user_query:
                     return {"result": "Please provide a question for Q&A mode."}
-                return self._answer_question_from_documents(documents, user_query, combined_hash)
+                return self._answer_question_from_documents(documents, user_query, combined_hash, system_prompt)
             else:
                 raise ValueError(f"Unknown query type: {query_type}")
                 
@@ -449,7 +507,7 @@ Continue in this format until Question {num_questions}."""
                 except:
                     pass
     
-    def _generate_multi_document_summary(self, documents: List[Dict[str, Any]], combined_hash: str) -> Dict[str, Any]:
+    def _generate_multi_document_summary(self, documents: List[Dict[str, Any]], combined_hash: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         valid_docs = [doc for doc in documents if doc["status"] == "processed"]
         if not valid_docs:
             return {"result": "No content could be extracted from any document."}
@@ -470,6 +528,11 @@ Requirements:
 5. Include important details but avoid unnecessary information
 
 Summary:"""
+            
+            # If a custom system prompt is provided, use it
+            if system_prompt:
+                summary_template = system_prompt_manager.apply_system_prompt(summary_template, 
+                                                                           {"custom_instructions": system_prompt})
             
             prompt = PromptTemplate(
                 input_variables=["text"],
@@ -495,6 +558,11 @@ Requirements:
 5. Conclude with an overall evaluation of the documents
 
 Summary:"""
+
+        # If a custom system prompt is provided, use it
+        if system_prompt:
+            multi_doc_template = system_prompt_manager.apply_system_prompt(multi_doc_template, 
+                                                                         {"custom_instructions": system_prompt})
         
         document_texts = []
         for doc in valid_docs:
@@ -519,7 +587,7 @@ Summary:"""
             "documents": [{"id": doc["id"], "filename": doc["filename"]} for doc in valid_docs]
         }
     
-    def _answer_question_from_documents(self, documents: List[Dict[str, Any]], user_query: str, combined_hash: str) -> Dict[str, Any]:
+    def _answer_question_from_documents(self, documents: List[Dict[str, Any]], user_query: str, combined_hash: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         valid_docs = [doc for doc in documents if doc["status"] == "processed"]
         if not valid_docs:
             return {"result": "No content could be extracted from any document."}
@@ -550,6 +618,11 @@ Guidelines:
 6. Keep language professional and clear
 
 Answer:"""
+            
+            # If a custom system prompt is provided, use it
+            if system_prompt:
+                qa_template = system_prompt_manager.apply_system_prompt(qa_template, 
+                                                                       {"custom_instructions": system_prompt})
             
             prompt = PromptTemplate(
                 input_variables=["context", "question"],
@@ -589,6 +662,11 @@ Guidelines:
 5. Ensure comprehensive answers, combining information from all relevant sources
 
 Answer:"""
+        
+        # If a custom system prompt is provided, use it
+        if system_prompt:
+            multi_doc_qa_template = system_prompt_manager.apply_system_prompt(multi_doc_qa_template, 
+                                                                             {"custom_instructions": system_prompt})
         
         prompt = PromptTemplate(
             input_variables=["context", "question"],

@@ -16,63 +16,24 @@ env/
 env.bak/
 venv.bak/
 
-# Poetry cache (optional if you don’t want to check in your lock file)
-# poetry.lock
+# Poetry cache
+poetry.lock
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Editor / IDE config
 .vscode/
 .idea/
+*.sublime-workspace
+*.sublime-project
 
 # Local environment variables
 .env
-
-# Output or build artifacts (if you don’t want generated slides in Git)
-output/
-
-# Jupyter checkpoints (if you often use notebooks)
-.ipynb_checkpoints/
-
-# Log files (if any)
-*.log
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*.pyd
-*.pyo
-*.so
-*.dll
-*.egg-info/
-*.egg
-
-# Virtual environments
-venv/
-.venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-
-# Poetry cache (optional if you don't want to check in your lock file)
-# poetry.lock
-
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Editor / IDE config
-.vscode/
-.idea/
-
-# Local environment variables
-.env
-.env.local
-.env.development
-.env.test
-.env.production
+.env.*
+!.env.example
 
 # Output or build artifacts
 output/
@@ -82,11 +43,24 @@ build/
 # Uploaded files
 storage/uploads/
 uploads/
+*/uploads/*
+*.pdf
+*.docx
+*.pptx
+*.txt
 
 # Database files
 *.sqlite
 *.sqlite3
 *.db
+
+# Debug and logging
+*.log
+logs/
+debug/
+debug_output/
+debug_*.log
+debug_*.txt
 
 # Backup and temporary files
 *.bak
@@ -98,16 +72,16 @@ uploads/
 *.old
 *.new
 *_new
+*.pyc.bak
 
 # Cache files
 .cache/
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
-# Log files
-*.log
-logs/
+storage\uploads

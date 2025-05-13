@@ -8,6 +8,7 @@ import re
 import unicodedata
 import io
 import requests
+import time
 
 from langchain_community.llms import Ollama
 from PyPDF2 import PdfReader
@@ -16,6 +17,7 @@ from .pptx_generator import PowerPointGenerator
 
 from .config import OLLAMA_CONFIG, PROMPT, OUTPUT_DIR
 from backend.model_management.global_model_config import global_model_config
+from backend.model_management.system_prompt_manager import system_prompt_manager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -47,8 +49,14 @@ def sanitize_text(text: str) -> str:
 def validate_slide_content(slides_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Validate and clean slide content."""
     cleaned_slides = []
-    for slide in slides_data:
+    for i, slide in enumerate(slides_data):
         cleaned_slide = {}
+        
+        # Ensure there's a title field
+        if "title" not in slide and "title_text" not in slide:
+            cleaned_slide["title_text"] = f"Slide {i + 1}"
+        
+        # Process all other fields
         for key, value in slide.items():
             if isinstance(value, str):
                 if contains_chinese(value):
@@ -57,6 +65,15 @@ def validate_slide_content(slides_data: List[Dict[str, Any]]) -> List[Dict[str, 
                 cleaned_slide[key] = value
             else:
                 cleaned_slide[key] = value
+        
+        # Convert "title" to "title_text" if needed
+        if "title" in cleaned_slide and "title_text" not in cleaned_slide:
+            cleaned_slide["title_text"] = cleaned_slide.pop("title")
+            
+        # Ensure content exists
+        if "content" not in cleaned_slide:
+            cleaned_slide["content"] = ["- No content available"]
+            
         cleaned_slides.append(cleaned_slide)
     return cleaned_slides
 
@@ -160,13 +177,14 @@ class SlideGenerationService:
                 except UnicodeDecodeError:
                     return file_content.decode("utf-8", errors="replace")
     
-    def generate_slides(self, topic: str, num_slides: int, document_content: Optional[str] = None) -> Dict[str, List[Dict[str, str]]]:
+    def generate_slides(self, topic: str, num_slides: int, document_content: Optional[str] = None, system_prompt: Optional[str] = None) -> Dict[str, List[Dict[str, str]]]:
         """Generate slides for a given topic.
         
         Args:
             topic: The topic to generate slides about
             num_slides: Number of slides to generate
             document_content: Optional content from uploaded document to use as context
+            system_prompt: Optional custom system prompt to override the default
             
         Returns:
             Dictionary containing the generated slides
@@ -190,14 +208,45 @@ class SlideGenerationService:
             intro = additional_context + "\n" if additional_context else ""
             prompt = f"{intro}{formatted_prompt}"
             
-            # Try up to 3 times to get valid response
+            # Try up to 3 times with increasing timeout/different approaches
             max_attempts = 3
             for attempt in range(max_attempts):
                 try:
-                    response = self._invoke_model(prompt)
+                    # Add a slight delay between attempts
+                    if attempt > 0:
+                        time.sleep(1)  # Wait 1 second between retries
                     
-                    # Parse and validate JSON
-                    slides_data = json.loads(response)
+                    # On later attempts, try to be more explicit about requiring valid JSON
+                    if attempt > 0:
+                        # Add a stronger reminder to provide valid JSON
+                        enhanced_prompt = prompt + f"\n\nIMPORTANT: Your response must be ONLY a valid JSON array. No explanations, no additional text. ONLY valid JSON array like: [{{'title': 'Title', 'content': ['- Point 1', '- Point 2']}}]"
+                        response = self._invoke_model(enhanced_prompt, system_prompt)
+                    else:
+                        response = self._invoke_model(prompt, system_prompt)
+                    
+                    # Parse and validate JSON - catch potential issues early
+                    try:
+                        slides_data = json.loads(response)
+                    except json.JSONDecodeError as json_error:
+                        logger.error(f"JSON decode error: {str(json_error)}")
+                        if attempt == max_attempts - 1:
+                            # On last attempt, create a fallback array
+                            slides_data = [
+                                {"title": "Error in Generation", "content": ["- Error generating slides", "- Please try again with a different model or topic"]},
+                                {"title": "Topic Information", "content": [f"- Topic: {topic}", "- The AI model could not generate proper content"]}
+                            ]
+                        else:
+                            # Try next attempt
+                            raise
+                    
+                    # Handle empty array
+                    if not slides_data or len(slides_data) == 0:
+                        if attempt == max_attempts - 1:
+                            slides_data = [
+                                {"title": "Error in Generation", "content": ["- Error generating slides", "- Please try again with a different model or topic"]}
+                            ]
+                        else:
+                            raise ValueError("Model returned empty slides array")
                     
                     # Clean and validate content
                     slides_data = validate_slide_content(slides_data)
@@ -214,16 +263,29 @@ class SlideGenerationService:
                                     slide["title_text"] = slide.pop(key)
                                     logger.debug(f"Falling back using \"{key}\" as title_text")
                                     break
+                            
+                            # If still no title, add a default one
+                            if "title_text" not in slide:
+                                slide["title_text"] = f"Slide {slides_data.index(slide) + 1}"
                         
                         # Convert "content" list to "text" string for PowerPoint compatibility
                         if "content" in slide and isinstance(slide["content"], list) and "text" not in slide:
                             slide["text"] = "\n".join(slide["content"])
                             logger.debug(f"Converted content list to text string: {slide['text']}")
+                        
+                        # Ensure each slide has content
+                        if "content" not in slide and "text" not in slide:
+                            slide["content"] = ["- No content available"]
+                            slide["text"] = "- No content available"
                     
                     logger.info(f"Successfully generated slides on attempt {attempt + 1}")
                     
                     # Save the slides without returning the path
-                    self._save_slides(topic, {"slides": slides_data})
+                    try:
+                        self._save_slides(topic, {"slides": slides_data})
+                    except Exception as save_error:
+                        logger.error(f"Error saving slides: {str(save_error)}")
+                        # Continue even if saving fails
                     
                     # Return only the slides data
                     return {"slides": slides_data}
@@ -231,17 +293,52 @@ class SlideGenerationService:
                 except Exception as e:
                     logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
                     if attempt == max_attempts - 1:
-                        raise
+                        # On last attempt failure, return simple fallback slides
+                        fallback_slides = [
+                            {"title_text": "Error in Generation", "content": ["- Error generating slides", "- Please try again with a different model or topic"], "text": "- Error generating slides\n- Please try again with a different model or topic"},
+                            {"title_text": "Topic Information", "content": [f"- Topic: {topic}", "- The AI model encountered issues"], "text": f"- Topic: {topic}\n- The AI model encountered issues"}
+                        ]
+                        
+                        # Try to save these fallback slides
+                        try:
+                            self._save_slides(topic, {"slides": fallback_slides})
+                        except:
+                            pass
+                            
+                        # Return fallback slides
+                        return {"slides": fallback_slides}
                     continue
         except Exception as e:
             logger.error(f"Error in generate_slides: {str(e)}", exc_info=True)
-            raise
+            # Return minimal fallback slides instead of raising
+            fallback_slides = [
+                {"title_text": "Error in Generation", "content": ["- Error generating slides", "- Please try again with a different model or topic"], "text": "- Error generating slides\n- Please try again with a different model or topic"}
+            ]
+            return {"slides": fallback_slides}
 
-    def _invoke_model(self, prompt: str) -> str:
-        """Invoke the Ollama model with the given prompt."""
+    def _invoke_model(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Invoke the Ollama model with the given prompt.
+        
+        Args:
+            prompt: The prompt to send to the model
+            system_prompt: Optional custom system prompt to override the default
+        
+        Returns:
+            Model response as a string
+        """
         try:
+            # Apply system prompt if available, otherwise use the default
+            if system_prompt is not None:
+                # Use the provided system prompt
+                final_prompt = system_prompt_manager.apply_system_prompt(prompt, variables={"topic": "presentation"})
+                logger.debug("Using provided system prompt")
+            else:
+                # Use the default system prompt from the manager
+                final_prompt = system_prompt_manager.apply_system_prompt(prompt, variables={"topic": "presentation"})
+                logger.debug("Using default system prompt")
+            
             # Use the LangChain Ollama wrapper to invoke the model
-            response_text = self.llm(prompt)
+            response_text = self.llm(final_prompt)
             
             # Clean the response text to extract valid JSON
             response_text = response_text.strip()
@@ -259,31 +356,126 @@ class SlideGenerationService:
             # Log the cleaned response for debugging
             logger.debug(f"Cleaned response text (first 200 chars): {response_text[:200]}...")
             
-            # Try to verify if it"s valid JSON
+            # Advanced JSON extraction and cleaning
             try:
+                # First try with the cleaned text as is
                 json.loads(response_text)
-            except json.JSONDecodeError as e:
-                # If not valid JSON, try to extract JSON portion
-                # Look for array start and end
-                start_idx = response_text.find("[")
-                end_idx = response_text.rfind("]")
+            except json.JSONDecodeError:
+                # More aggressive JSON extraction
+                try:
+                    # Look for array start and end
+                    start_idx = response_text.find("[")
+                    end_idx = response_text.rfind("]")
+                    
+                    if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+                        # Extract what looks like a JSON array
+                        extracted_json = response_text[start_idx:end_idx+1]
+                        
+                        # Try to parse the extracted JSON
+                        try:
+                            json.loads(extracted_json)
+                            response_text = extracted_json
+                        except json.JSONDecodeError:
+                            # Try to fix common JSON issues
+                            fixed_json = self._fix_json_format(extracted_json)
+                            json.loads(fixed_json)  # Validate it parses correctly
+                            response_text = fixed_json
+                    else:
+                        # If we can't find proper array markers, try to reconstruct a basic array
+                        logger.warning("Couldn't find proper JSON array markers, attempting to fix format")
+                        response_text = self._fix_json_format(response_text)
+                        try:
+                            json.loads(response_text)  # Validate the fixed format
+                        except json.JSONDecodeError:
+                            # Last resort: return a minimal valid slide array
+                            logger.error("Failed to fix JSON format, returning fallback content")
+                            return '[{"title": "Error in Generation", "content": ["- Error in slide generation", "- Please try again with a different model or topic"]}]'
+                except Exception as json_fix_error:
+                    # Log detailed debug info
+                    logger.error(f"Could not fix JSON format: {str(json_fix_error)}")
+                    logger.debug(f"Raw response text: {response_text}")
+                    
+                    # Create a fallback array with an error slide if everything else fails
+                    logger.warning("Creating fallback slide content")
+                    return '[{"title": "Error in Generation", "content": ["- Error in slide generation", "- Please try again with a different model or topic"]}]'
+            
+            # Extra validation - make sure we have an array with at least one object
+            try:
+                parsed_data = json.loads(response_text)
+                if not isinstance(parsed_data, list) or len(parsed_data) == 0:
+                    logger.warning("Response is not a proper array or is empty, creating fallback")
+                    return '[{"title": "Error in Generation", "content": ["- Error in slide generation", "- Please try again with a different model or topic"]}]'
                 
-                if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
-                    # Extract what looks like a JSON array
-                    response_text = response_text[start_idx:end_idx+1]
-                    # Verify the extracted portion is valid JSON
-                    json.loads(response_text)
-                else:
-                    # Could not extract valid JSON, log and raise
-                    logger.error(f"Could not extract valid JSON: {str(e)}")
-                    logger.debug(f"Response text: {response_text}")
-                    raise ValueError(f"Model did not return valid JSON: {str(e)}")
-                
+                # Validate that all slides have at least one of title or content
+                for slide in parsed_data:
+                    if not isinstance(slide, dict):
+                        continue
+                    if not ('title' in slide or 'title_text' in slide or 'content' in slide):
+                        logger.warning(f"Found invalid slide without title or content: {slide}")
+            except:
+                # If any validation fails, use the fallback
+                return '[{"title": "Error in Generation", "content": ["- Error in slide generation", "- Please try again with a different model or topic"]}]'
+            
             return response_text
             
         except Exception as e:
             logger.error(f"Failed to invoke model: {str(e)}")
-            raise Exception(f"Failed to invoke model: {str(e)}")
+            # Return a minimal valid JSON array as fallback instead of raising an exception
+            return '[{"title": "Error in Generation", "content": ["- Error in slide generation", "- Please try again with a different model or topic"]}]'
+    
+    def _fix_json_format(self, text: str) -> str:
+        """Attempt to fix common JSON formatting issues in model output."""
+        # Replace single quotes with double quotes for JSON compatibility
+        text = text.replace("'", '"')
+        
+        # Look for slide-like structures and convert to proper JSON
+        if '[' not in text and '{' in text:
+            # Find all individual slide objects
+            slide_objects = []
+            open_braces = 0
+            start_idx = -1
+            
+            for i, char in enumerate(text):
+                if char == '{' and open_braces == 0:
+                    start_idx = i
+                    open_braces += 1
+                elif char == '{':
+                    open_braces += 1
+                elif char == '}':
+                    open_braces -= 1
+                    if open_braces == 0 and start_idx != -1:
+                        slide_objects.append(text[start_idx:i+1])
+                        start_idx = -1
+            
+            # If we found slide objects, wrap them in an array
+            if slide_objects:
+                return '[' + ','.join(slide_objects) + ']'
+            
+        # If text contains unbalanced quotes, try to fix them
+        quote_count = text.count('"')
+        if quote_count % 2 != 0:
+            # Find and fix unbalanced quotes
+            in_quotes = False
+            new_text = []
+            
+            for char in text:
+                if char == '"':
+                    in_quotes = not in_quotes
+                new_text.append(char)
+            
+            # If we ended up with an open quote, close it
+            if in_quotes:
+                new_text.append('"')
+                
+            text = ''.join(new_text)
+        
+        # If there's no array wrapper, add it
+        if not text.strip().startswith('['):
+            text = '[' + text.strip()
+        if not text.strip().endswith(']'):
+            text = text.strip() + ']'
+            
+        return text
 
     def _save_slides(self, topic: str, slides_data: dict):
         """Save the generated slides as JSON and PPTX."""

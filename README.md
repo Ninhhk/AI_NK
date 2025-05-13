@@ -13,6 +13,7 @@ An AI-powered application that combines document analysis and presentation gener
   - Automatic slide generation from content
   - Support for various input formats
   - Customizable presentation templates
+  - Customizable system prompts for controlling slide style and format
 
 ## Project Structure
 

@@ -4,6 +4,12 @@ import json
 import time
 import os
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from frontend.components.system_prompt import system_prompt_ui
 
 # Set page config for better appearance
 st.set_page_config(
@@ -63,7 +69,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def generate_slides(topic: str, num_slides: int, model_name: str = None, document_files=None) -> dict:
+def generate_slides(topic: str, num_slides: int, model_name: str = None, document_files=None, system_prompt: str = None) -> dict:
     """Send content to backend for slide generation with multiple documents."""
     # Prepare files list for multi-file upload under 'documents'
     files = []
@@ -81,6 +87,10 @@ def generate_slides(topic: str, num_slides: int, model_name: str = None, documen
     # Add model_name if specified
     if model_name:
         data["model_name"] = model_name
+        
+    # Add system_prompt if specified
+    if system_prompt:
+        data["system_prompt"] = system_prompt
         
     response = requests.post(
         "http://localhost:8000/api/slides/generate",
@@ -109,6 +119,29 @@ def get_current_model() -> str:
     except Exception as e:
         print(f"Error fetching current model: {e}")
         return ""
+
+def get_system_prompt() -> str:
+    """Get current system prompt for slide generation."""
+    try:
+        response = requests.get("http://localhost:8000/api/slides/system-prompt")
+        response.raise_for_status()
+        return response.json().get("system_prompt", "")
+    except Exception as e:
+        print(f"Error fetching system prompt: {e}")
+        return ""
+
+def set_system_prompt(prompt: str) -> bool:
+    """Set system prompt for slide generation."""
+    try:
+        response = requests.post(
+            "http://localhost:8000/api/slides/system-prompt",
+            data={"system_prompt": prompt}
+        )
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Error setting system prompt: {e}")
+        return False
 
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
@@ -176,6 +209,78 @@ with col2:
         help="Choose the number of slides you want to create (maximum 20 slides)"
     )
 
+# System prompt section
+with st.expander("💬 System Prompt Settings", expanded=False):
+    # Get current system prompt
+    current_system_prompt = get_system_prompt()
+    
+    # Add tabs for different sections
+    prompt_tab, examples_tab, help_tab = st.tabs(["Edit Prompt", "Example Prompts", "Help"])
+    with prompt_tab:
+        # Use the reusable system prompt UI component
+        custom_system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="slide_gen")
+        
+        # Save button for system prompt
+        if st.button("💾 Save System Prompt"):
+            if set_system_prompt(custom_system_prompt):
+                st.success("✅ System prompt saved successfully!")
+            else:
+                st.error("❌ Failed to save system prompt. Please try again.")
+                  # Use in current session only
+        if 'use_custom_prompt' not in st.session_state:
+            st.session_state['use_custom_prompt'] = False
+            
+        st.session_state['use_custom_prompt'] = st.checkbox(
+            "Use custom prompt for this session only (without saving)",
+            value=st.session_state['use_custom_prompt'],
+            key="slide_gen_use_custom_prompt",
+            help="Apply a custom prompt for just this session without saving it as the default"
+        )
+    
+    with examples_tab:
+        st.markdown("### Example System Prompts")
+        st.markdown("Click on any example to use it:")
+        
+        # Technical presentation example
+        if st.button("Technical Presentation"):
+            example_prompt = """You are a technical presentation expert. Create slides with precise, technically accurate content. 
+Use formal language, include relevant technical terminology, and organize complex information 
+hierarchically. Each slide should focus on a single technical concept with supporting details.
+Limit each slide to 5 bullet points maximum, each with 7-10 words."""
+            st.session_state['custom_system_prompt'] = example_prompt
+            st.experimental_rerun()
+        
+        # Educational presentation example
+        if st.button("Educational Presentation"):
+            example_prompt = """You are an education specialist creating slides for students. Present information in a 
+clear, engaging way with simple explanations of complex concepts. Include thought-provoking 
+questions on some slides, and organize content in a logical learning progression from 
+basic to advanced concepts. Use friendly, accessible language."""
+            st.session_state['custom_system_prompt'] = example_prompt
+            st.experimental_rerun()
+        
+        # Business presentation example
+        if st.button("Business Presentation"):
+            example_prompt = """You are a business presentation expert focusing on persuasive, action-oriented slides.
+Create content that highlights key business metrics, strategic insights, and clear 
+recommendations. Use professional language, emphasize benefits and impacts, and 
+ensure each slide contributes to a compelling business narrative. Include a clear 
+call to action in the conclusion."""
+            st.session_state['custom_system_prompt'] = example_prompt
+            st.experimental_rerun()
+    
+    with help_tab:
+        st.markdown("### Tips for Writing Effective System Prompts")
+        st.markdown("""
+        1. **Be specific about format**: Mention how many bullet points per slide or words per bullet point
+        2. **Define the audience**: Specify who the presentation is for
+        3. **Set the tone**: Indicate if you want formal, casual, technical, or simplified language
+        4. **Provide structure guidance**: Suggest how information should be organized
+        5. **Include domain expertise**: Add specific rules relevant to your topic
+        
+        For more detailed guidance, see the [System Prompt Guide](https://github.com/your-username/AI_NVCB/blob/main/docs/system_prompt_guide.md).
+        """)
+
 # Reference document upload section supporting multiple files
 st.markdown("""
     <div class="card fade-in">
@@ -202,13 +307,13 @@ if st.button("🚀 Create Slides", type="primary"):
         with st.status("🔄 Creating slides...", expanded=True) as status:
             try:
                 start_time = time.time()
-                
                 # Include selected model in the generation request
                 result = generate_slides(
                     topic=topic, 
                     num_slides=num_slides, 
                     model_name=selected_model if 'selected_model' in locals() else None,
-                    document_files=document_files
+                    document_files=document_files,
+                    system_prompt=st.session_state.get('slide_gen_system_prompt') if st.session_state.get('use_custom_prompt', False) else None
                 )
                 
                 # Generate filename based on topic and timestamp
