@@ -12,6 +12,7 @@ import langdetect
 from langchain_community.llms import Ollama
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
+from langchain.schema import Document
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -131,13 +132,36 @@ class DocumentAnalysisService:
         return self.model_name
 
     def _load_document(self, file_path: str, start_page: int = 0, end_page: int = -1) -> List[Any]:
-        loader = PyPDFLoader(file_path)
-        pages = loader.load()
-        
-        if end_page == -1:
-            end_page = len(pages)
-        
-        return pages[start_page:end_page]
+        # Check if it's a PDF file or text file based on extension
+        if file_path.endswith('.pdf'):
+            loader = PyPDFLoader(file_path)
+            pages = loader.load()
+            
+            if end_page == -1:
+                end_page = len(pages)
+            
+            return pages[start_page:end_page]
+        else:
+            # Handle text files
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Try different encodings
+                try:
+                    with open(file_path, 'r', encoding='utf-16') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    try:
+                        with open(file_path, 'r', encoding='cp1258') as f:  # Vietnamese encoding
+                            content = f.read()
+                    except UnicodeDecodeError:
+                        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                            content = f.read()
+            
+            # Create a Document object similar to PDF loader output
+            doc = Document(page_content=content, metadata={"source": file_path, "page": 0})
+            return [doc]
 
     def _generate_document_id(self, file_content: bytes) -> str:
         import hashlib
@@ -180,11 +204,16 @@ class DocumentAnalysisService:
         user_query: Optional[str] = None,
         start_page: int = 0,
         end_page: int = -1,
-        system_prompt: Optional[str] = None,
-    ) -> Dict[str, str]:
+        system_prompt: Optional[str] = None,    ) -> Dict[str, str]:
         document_id = self._generate_document_id(file_content)
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+        # Detect file type by examining the first few bytes
+        if file_content.startswith(b'%PDF'):
+            file_extension = ".pdf"
+        else:
+            file_extension = ".txt"
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_file.write(file_content)
             temp_path = temp_file.name
 
@@ -299,6 +328,7 @@ Answer:"""
             texts = text_splitter.split_documents(pages)
             
             combined_text = "\n\n".join([doc.page_content for doc in texts])
+            
             quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the following text.
 
 Text:
@@ -320,7 +350,8 @@ D. [option D in Vietnamese]
 Đáp án đúng: [A/B/C/D]
 
 Continue in this format until Câu {num_questions}."""
-              # If a custom system prompt is provided, use it
+            
+            # If a custom system prompt is provided, use it
             if system_prompt:
                 quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
                                                                       {"custom_instructions": system_prompt})
@@ -371,11 +402,12 @@ Continue in this format until Câu {num_questions}."""
                 pages = loader.load()
                 splitter = RecursiveCharacterTextSplitter()
                 chunks = splitter.split_documents(pages)
-                combined = "\n\n".join([doc.page_content for doc in chunks])                
+                combined = "\n\n".join([doc.page_content for doc in chunks])
                 docs_text.append(f"### Document: {filename}\n{combined}")
             finally:
-                os.unlink(temp_path)        
-                all_text = "\n\n---\n\n".join(docs_text)
+                os.unlink(temp_path)
+        
+        all_text = "\n\n---\n\n".join(docs_text)
         
         quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the following documents and their content.
 
@@ -397,7 +429,8 @@ D. [option D in Vietnamese]
 Đáp án đúng: [A/B/C/D]
 
 Continue in this format until Câu {num_questions}."""
-          # If a custom system prompt is provided, use it
+        
+        # If a custom system prompt is provided, use it
         if system_prompt:
             quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
                                                                    {"custom_instructions": system_prompt})

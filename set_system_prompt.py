@@ -28,7 +28,7 @@ def set_system_prompt():
         logger.info(f"Using API base URL: {API_BASE_URL}")
         
         # The system prompt we want to set
-        system_prompt = "must answer in vietnamese, phải trả lời bằng tiếng việt"
+        system_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
         logger.info(f"Setting system prompt to: '{system_prompt}'")
         
         # List of all system prompt endpoints

@@ -49,7 +49,7 @@ async def startup_event():
         logger.info("Background cleaning tasks setup complete")
         
         # Ensure the system prompt is set correctly on startup
-        vietnamese_prompt = "must answer in vietnamese, phải trả lời bằng tiếng việt"
+        vietnamese_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
         current_prompt = system_prompt_manager.get_system_prompt()
         
         if current_prompt != vietnamese_prompt:

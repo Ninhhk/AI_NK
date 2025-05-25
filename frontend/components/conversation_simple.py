@@ -1,9 +1,14 @@
 # filepath: frontend/components/conversation_simple.py
 import streamlit as st
 import time
+import requests
+import os
 from datetime import datetime
 import uuid
 from typing import Dict, List, Any, Optional, Callable
+
+# API Base URL (can be customized via environment variable)
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
 # Initialize session state for conversations if not exists
 if 'conversations' not in st.session_state:
@@ -245,29 +250,66 @@ def create_mock_data():
 # Functions for document_analysis page
 def initialize_chat_history(document_id: str):
     """Initialize chat history for a document."""
-    if 'in_memory_chat_history' not in st.session_state:
-        st.session_state.in_memory_chat_history = {}
-    
-    if document_id not in st.session_state.in_memory_chat_history:
-        st.session_state.in_memory_chat_history[document_id] = []
+    try:
+        # Initialize chat history on the backend
+        response = requests.post(
+            f"{API_BASE_URL}/api/documents/chat-history/{document_id}/initialize"
+        )
+        response.raise_for_status()
+        
+        # Also initialize in memory for the current session
+        if 'in_memory_chat_history' not in st.session_state:
+            st.session_state.in_memory_chat_history = {}
+        
+        if document_id not in st.session_state.in_memory_chat_history:
+            st.session_state.in_memory_chat_history[document_id] = []
+            
+        return True
+    except Exception as e:
+        if 'debug_mode' in st.session_state and st.session_state.debug_mode:
+            st.error(f"Failed to initialize chat history: {e}")
+        
+        # Still initialize the local memory
+        if 'in_memory_chat_history' not in st.session_state:
+            st.session_state.in_memory_chat_history = {}
+        
+        if document_id not in st.session_state.in_memory_chat_history:
+            st.session_state.in_memory_chat_history[document_id] = []
+            
+        return False
 
 def add_chat_message(document_id: str, user_query: str, system_response: str):
     """Add a Q&A pair to the chat history."""
-    if 'in_memory_chat_history' not in st.session_state:
-        st.session_state.in_memory_chat_history = {}
-    
-    if document_id not in st.session_state.in_memory_chat_history:
-        st.session_state.in_memory_chat_history[document_id] = []
-    
-    # Create a message entry
-    message = {
-        'user_query': user_query,
-        'system_response': system_response,
-        'timestamp': time.time()
-    }
-    
-    # Add to history
-    st.session_state.in_memory_chat_history[document_id].append(message)
+    try:
+        # Create a message entry
+        message = {
+            'user_query': user_query,
+            'system_response': system_response,
+            'timestamp': time.time()
+        }
+        
+        # Send message to backend API
+        response = requests.post(
+            f"{API_BASE_URL}/api/documents/chat-history/{document_id}/add",
+            json=message
+        )
+        response.raise_for_status()
+        
+        # Also keep track in memory for the current session
+        if 'in_memory_chat_history' not in st.session_state:
+            st.session_state.in_memory_chat_history = {}
+        
+        if document_id not in st.session_state.in_memory_chat_history:
+            st.session_state.in_memory_chat_history[document_id] = []
+        
+        # Add to history
+        st.session_state.in_memory_chat_history[document_id].append(message)
+        
+        return True
+    except Exception as e:
+        if st.session_state.debug_mode:
+            st.error(f"Failed to add chat message: {e}")
+        return False
 
 def chat_interface(document_id: str, on_submit_callback=None):
     """Display a chat interface for follow-up questions."""

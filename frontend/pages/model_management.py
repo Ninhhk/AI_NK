@@ -347,7 +347,7 @@ with tab3:
     
     if st.button("🔄 Reset to Vietnamese Prompt"):
         try:
-            vietnamese_prompt = "must answer in vietnamese, phải trả lời bằng tiếng việt"
+            vietnamese_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
             result = set_system_prompt(vietnamese_prompt)
             if result:
                 st.success("✅ System prompt reset to Vietnamese response requirement")

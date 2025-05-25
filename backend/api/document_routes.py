@@ -142,15 +142,14 @@ async def analyze_document(
                 file_content=file_contents[0],
                 query_type=query_type,
                 user_query=user_query,
-                system_prompt=system_prompt,
-            )
-            
+                system_prompt=system_prompt,            )
             # Store in chat history if it's a QA query
             if query_type == "qa" and user_query:
                 chat_entry = chat_history_repo.add_chat_entry(
                     document_id=document_ids[0],
                     user_query=user_query,
-                    system_response=result.get("result", ""),                    meta={
+                    system_response=result.get("result", ""),
+                    meta={
                         "query_type": query_type
                     }
                 )
@@ -158,6 +157,10 @@ async def analyze_document(
                 result["chat_id"] = chat_entry["id"]
                 logger.debug(f"Added chat history entry: document_id={document_ids[0]}, user_query='{user_query[:50]}...'")
                 logger.debug(f"Chat entry added with ID: {chat_entry['id']}")
+            
+            # Override the document_id in result with the database document ID
+            result["document_id"] = document_ids[0]
+            logger.debug(f"Set result document_id to database ID: {document_ids[0]}")
         else:
             # For multiple files, use the multi-document analysis method
             logger.info(f"Using multi-file analysis method for {len(file_contents)} files")
@@ -188,12 +191,12 @@ async def analyze_document(
                         "document_names": filenames
                     }
                 )
-                
-                # Use the actual document ID from the placeholder record
+                  # Use the actual document ID from the placeholder record
                 chat_entry = chat_history_repo.add_chat_entry(
                     document_id=placeholder_document["id"],
                     user_query=user_query,
-                    system_response=result.get("result", ""),                    meta={
+                    system_response=result.get("result", ""),
+                    meta={
                         "query_type": query_type,
                         "document_ids": document_ids,
                         "document_names": filenames
@@ -202,6 +205,24 @@ async def analyze_document(
                 # Add chat history ID to result
                 result["chat_id"] = chat_entry["id"]
                 # Add placeholder document ID to result
+                result["multi_document_id"] = placeholder_document["id"]
+            else:
+                # For non-QA operations, create a proper placeholder document as well
+                combined_filenames = ', '.join(filenames)
+                placeholder_document = document_repo.insert_document(
+                    user_id=current_user["id"],
+                    filename=f"Summary: {combined_filenames[:100]}{'...' if len(combined_filenames) > 100 else ''}",
+                    path="",  # No physical path for this virtual document
+                    content_type="multi/document",
+                    size=0,  # No physical size
+                    meta={
+                        "is_multi_document": True,
+                        "is_summary_only": True,
+                        "document_ids": document_ids,
+                        "document_names": filenames
+                    }
+                )
+                # Use the actual document ID from the placeholder record
                 result["multi_document_id"] = placeholder_document["id"]
         
         # Add document IDs to result for frontend reference
@@ -482,3 +503,99 @@ async def set_system_prompt(system_prompt: str = Form(...)) -> Dict[str, str]:
         return {"system_prompt": system_prompt, "message": "System prompt updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat-history/{document_id}/initialize")
+async def initialize_chat_history(
+    document_id: str,
+    current_user: Dict = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Initialize chat history for a document.
+    This endpoint can be called when starting a new conversation with a document.
+    """
+    try:
+        # Check if document exists
+        document = document_repo.get_document_by_id(document_id)
+        if not document:
+            logger.warning(f"Document not found during chat history initialization: {document_id}")
+            return {
+                "success": False,
+                "document_id": document_id,
+                "error": "Document not found"
+            }
+            
+        # No need to actually do anything, we'll create history entries as needed
+        # This endpoint mainly serves as a check that the document exists
+        
+        logger.info(f"Chat history initialized for document: {document_id}")
+        return {
+            "success": True,
+            "document_id": document_id,
+            "message": "Chat history initialized"
+        }
+    except Exception as e:
+        logger.error(f"Error initializing chat history: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "document_id": document_id,
+            "error": f"Error initializing chat history: {str(e)}"
+        }
+
+@router.post("/chat-history/{document_id}/add")
+async def add_chat_history_entry(
+    document_id: str,
+    message: Dict[str, Any],
+    current_user: Dict = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Add a new entry to the chat history for a document.
+    """
+    try:
+        # Check if document exists
+        document = document_repo.get_document_by_id(document_id)
+        if not document:
+            logger.warning(f"Document not found when adding chat message: {document_id}")
+            return {
+                "success": False,
+                "document_id": document_id,
+                "error": "Document not found"
+            }
+        
+        # Add the chat entry
+        user_query = message.get("user_query", "")
+        system_response = message.get("system_response", "")
+        
+        # Validate required fields
+        if not user_query or not system_response:
+            return {
+                "success": False,
+                "document_id": document_id,
+                "error": "Both user_query and system_response are required"
+            }
+        
+        # Add metadata from the message if present
+        meta = message.get("meta", {})
+        
+        # Add to history
+        chat_entry = chat_history_repo.add_chat_entry(
+            document_id=document_id,
+            user_query=user_query,
+            system_response=system_response,
+            meta=meta
+        )
+        
+        logger.info(f"Added chat entry for document: {document_id}")
+        return {
+            "success": True,
+            "document_id": document_id,
+            "chat_entry": chat_entry
+        }
+    except Exception as e:
+        logger.error(f"Error adding chat entry: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "document_id": document_id,
+            "error": f"Error adding chat entry: {str(e)}"
+        }

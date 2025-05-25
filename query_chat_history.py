@@ -17,27 +17,26 @@ try:
     # Connect to the database
     conn = sqlite3.connect(db_path)
     conn.row_factory = dict_factory
-    cursor = conn.cursor()
-
-    # First check if table exists
+    cursor = conn.cursor()    # First check if table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_history'")
     table_exists = cursor.fetchone()
     print(f"Chat history table exists: {table_exists is not None}")
 
     if table_exists:
-        # Query chat history
-        cursor.execute('SELECT * FROM chat_history LIMIT 5')
+        # Query chat history from chat_history table
+        cursor.execute('SELECT id, document_id, user_query, system_response, created_at FROM chat_history ORDER BY created_at DESC LIMIT 10')
         rows = cursor.fetchall()
 
         print('Chat history count:', len(rows))
-        for row in rows:
-            # Convert any serialized JSON
-            if 'meta' in row and row['meta']:
-                try:
-                    row['meta'] = json.loads(row['meta'])
-                except:
-                    pass
-            print(json.dumps(row, indent=2))
+        print('\n--- RECENT CHAT HISTORY ---')
+        for i, row in enumerate(rows, 1):
+            print(f"\n=== Conversation {i} ===")
+            print(f"ID: {row['id']}")
+            print(f"Document ID: {row['document_id']}")
+            print(f"Created: {row['created_at']}")
+            print(f"User Query: {row['user_query']}")
+            print(f"AI Response: {row['system_response'][:200]}..." if len(row['system_response']) > 200 else f"AI Response: {row['system_response']}")
+            print("-" * 50)
     
     # Close connection
     conn.close()

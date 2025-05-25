@@ -7,6 +7,7 @@ import pkg_resources
 import sys
 import os
 from pathlib import Path
+import re
 
 # Add the project root to the Python path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -130,75 +131,39 @@ def set_system_prompt(prompt: str):
         st.error(f"Error setting system prompt: {e}")
         return None
 
-def is_valid_uuid(test_string):
-    """Check if a string is a valid UUID format"""
-    import re
-    return bool(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', test_string))
-
-def is_old_hash_format(test_string):
-    """Check if a string is in old MD5 hash format"""
-    import re
-    return bool(re.match(r'^[a-f0-9]{32}$', test_string))
-
 def load_chat_history():
-    """Load chat history and store in session state with document ID validation"""
-    if not st.session_state.document_id:
-        if st.session_state.debug_mode:
-            st.info("No document ID available for chat history loading")
-        return False
-        
-    document_id = st.session_state.document_id
-    
-    # CRITICAL: Check if we have an old hash-based document ID
-    if is_old_hash_format(document_id):
-        st.error(f"🚨 Old hash-based document ID detected: {document_id}")
-        st.error("This document was processed with the old system. Please:")
-        st.error("1. Click 'Clear Session State' button in the sidebar")
-        st.error("2. Upload a NEW document for analysis")
-        st.error("3. The new document will get a proper UUID format ID")
-        st.session_state.chat_history = []
-        st.session_state.chat_history_last_loaded = time.time()
-        return False
-    
-    # Verify we have a valid UUID format
-    if not is_valid_uuid(document_id):
-        st.error(f"🚨 Invalid document ID format: {document_id}")
-        st.error("Expected UUID format like: a562ca5b-649b-4cb2-bc34-3ee3fd06d0c3")
-        st.session_state.chat_history = []
-        st.session_state.chat_history_last_loaded = time.time()
-        return False
-    
-    try:
-        if st.session_state.debug_mode:
-            st.write(f"Loading chat history for document ID: {document_id}")
-            st.success(f"✅ Valid UUID format detected: {document_id}")
-        
-        # Get chat history from API
-        history_data = get_chat_history(document_id)
-        st.session_state.chat_history = history_data.get("history", [])
-        st.session_state.chat_history_last_loaded = time.time()
-        
-        # Show debug info
-        if st.session_state.debug_mode:
-            st.info(f"Chat history loaded from API: {len(st.session_state.chat_history)} messages")
-        
-        return True
-    except requests.exceptions.ConnectionError:
-        if st.session_state.debug_mode:
-            st.error("Cannot connect to server. Please check if the backend server has been started.")
-        else:
-            st.error("Cannot connect to server. Please try again later.")
-        return False
-    except requests.exceptions.HTTPError as e:
-        if st.session_state.debug_mode:
-            st.error(f"HTTP error when loading chat history: {e}")
-        if "404" in str(e):
-            st.warning("API endpoint for chat history does not exist. Please update the backend code.")
-        return False
-    except Exception as e:
-        if st.session_state.debug_mode:
-            st.error(f"Error loading chat history: {e}")
-        return False
+    """Load chat history and store in session state"""
+    if st.session_state.document_id:
+        try:
+            st.write(f"Loading chat history for document ID: {st.session_state.document_id}")
+            
+            # Get chat history from API
+            history_data = get_chat_history(st.session_state.document_id)
+            st.session_state.chat_history = history_data.get("history", [])
+            st.session_state.chat_history_last_loaded = time.time()
+            
+            # Show debug info
+            if st.session_state.debug_mode:
+                st.info(f"Chat history loaded from API: {len(st.session_state.chat_history)} messages")
+            
+            return True
+        except requests.exceptions.ConnectionError:
+            if st.session_state.debug_mode:
+                st.error("Cannot connect to server. Please check if the backend server has been started.")
+            else:
+                st.error("Cannot connect to server. Please try again later.")
+            return False
+        except requests.exceptions.HTTPError as e:
+            if st.session_state.debug_mode:
+                st.error(f"HTTP error when loading chat history: {e}")
+            if "404" in str(e):
+                st.warning("API endpoint for chat history does not exist. Please update the backend code.")
+            return False
+        except Exception as e:
+            if st.session_state.debug_mode:
+                st.error(f"Error loading chat history: {e}")
+            return False
+    return False
 
 def format_timestamp(timestamp: float) -> str:
     """Format Unix timestamp to a readable format."""
@@ -256,7 +221,6 @@ def display_analysis_results(result, query_type, start_time):
         """, unsafe_allow_html=True)
     
     # Format the content to highlight citations like [doc_1_abc123]
-    import re
     if has_multiple_docs:
         # Find all citation patterns like [doc_X_XXXXX] in the text
         citation_pattern = r'\[(doc_\d+_[a-z0-9]+)\]'
@@ -371,41 +335,7 @@ with st.sidebar:
                 📤 Upload Document
             </h2>
         </div>
-    """, unsafe_allow_html=True)    # Add session state reset button for debugging
-    if st.session_state.debug_mode:
-        st.markdown("---")
-        
-        # Show current document ID for debugging
-        current_doc_id = st.session_state.get('document_id', 'None')
-        if current_doc_id and current_doc_id != 'None':
-            # Check if it's UUID format vs hash format
-            import re
-            is_uuid = bool(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', current_doc_id))
-            is_hash = bool(re.match(r'^[a-f0-9]{32}$', current_doc_id))
-            
-            if is_uuid:
-                st.info(f"🆔 Current Document ID: `{current_doc_id}` ✅ (UUID format)")
-            elif is_hash:
-                st.warning(f"🆔 Current Document ID: `{current_doc_id}` ⚠️ (Old hash format)")
-            else:
-                st.error(f"🆔 Current Document ID: `{current_doc_id}` ❌ (Unknown format)")
-        else:
-            st.info("🆔 No document currently loaded")
-        if st.button("🧹 Clear Session State", help="Clear cached document IDs and force fresh analysis"):
-            # Clear all document-related session state
-            keys_to_clear = ['document_id', 'chat_history', 'chat_history_last_loaded', 'in_memory_chat_history']
-            cleared_keys = []
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-                    cleared_keys.append(key)
-            
-            if cleared_keys:
-                st.success(f"✅ Session state cleared! Removed: {', '.join(cleared_keys)}")
-                st.info("🔄 Upload a document for fresh analysis with new UUID format ID.")
-            else:
-                st.info("ℹ️ Session state was already clean.")
-            refresh_page()
+    """, unsafe_allow_html=True)
     
     files = st.file_uploader("Select PDF file", type=["pdf"], accept_multiple_files=True)
     if files:
@@ -516,42 +446,31 @@ with tab1:
                             query_type=query_type,
                             user_query=user_query if query_type == "qa" else None,
                             model_name=model_name,
-                            system_prompt=system_prompt                        )
+                            system_prompt=system_prompt
+                        )
                         status.update(label="✅ Completed!", state="complete", expanded=False)
                         
-                        # CRITICAL FIX: Clear any existing document ID first to avoid using cached old hash-based IDs
-                        st.session_state.document_id = None
-                        
-                        # Store document_id for chat history - prioritize multi_document_id for multi-file scenarios
-                        if "multi_document_id" in result:
-                            st.session_state.document_id = result["multi_document_id"]
-                            if st.session_state.debug_mode:
-                                st.info(f"✅ Using multi_document_id: {result['multi_document_id']}")
-                        elif "document_id" in result:
+                        # Store document_id for chat history
+                        if "document_id" in result:
                             st.session_state.document_id = result["document_id"]
                             if st.session_state.debug_mode:
-                                st.info(f"✅ Got document_id: {result['document_id']}")
+                                st.info(f"Got document_id: {result['document_id']}")
                         elif "document_ids" in result and result["document_ids"]:
                             # Use the first document ID if we have a list
                             st.session_state.document_id = result["document_ids"][0]
                             if st.session_state.debug_mode:
-                                st.info(f"✅ Using first document_id from document_ids: {result['document_ids'][0]}")
-                        
-                        # Validate the document ID format
-                        if st.session_state.document_id:
-                            if is_valid_uuid(st.session_state.document_id):
-                                if st.session_state.debug_mode:
-                                    st.success(f"✅ Valid UUID format document ID assigned: {st.session_state.document_id}")
-                            else:
-                                st.error(f"🚨 Invalid document ID format received from backend: {st.session_state.document_id}")
-                                st.session_state.document_id = None
+                                st.info(f"Using first document_id from document_ids: {result['document_ids'][0]}")
+                        elif "multi_document_id" in result:
+                            st.session_state.document_id = result["multi_document_id"]
+                            if st.session_state.debug_mode:
+                                st.info(f"Using multi_document_id: {result['multi_document_id']}")
                                 
                         # If this was a QA query, setup chat history
                         if query_type == "qa" and st.session_state.document_id:
                             # Add a slight delay to allow the backend to update
                             time.sleep(0.5)
                             
-                            # Add the QA result to our in-memory chat history
+                            # Add the QA result to our chat history
                             from frontend.components.conversation_simple import add_chat_message, initialize_chat_history
                             
                             # Initialize chat history for this document
@@ -559,11 +478,17 @@ with tab1:
                             
                             # Add the new message pair
                             if "answer" in result:
-                                add_chat_message(
+                                success = add_chat_message(
                                     document_id=st.session_state.document_id,
                                     user_query=user_query,
                                     system_response=result["answer"]
                                 )
+                                
+                                if st.session_state.debug_mode:
+                                    if success:
+                                        st.success("✅ Chat message added successfully!")
+                                    else:
+                                        st.error("❌ Failed to add chat message")
                             
                             # Debug the document ID we're using
                             if st.session_state.debug_mode:
@@ -607,36 +532,24 @@ with tab1:
                             files=files,
                             query_type=query_type,
                             model_name=model_name,
-                            system_prompt=system_prompt                        )
+                            system_prompt=system_prompt
+                        )
                         status.update(label="✅ Completed!", state="complete", expanded=False)
                         
-                        # CRITICAL FIX: Clear any existing document ID first to avoid using cached old hash-based IDs
-                        st.session_state.document_id = None
-                        
-                        # Store document_id for chat history - prioritize multi_document_id for multi-file scenarios
-                        if "multi_document_id" in result:
-                            st.session_state.document_id = result["multi_document_id"]
-                            if st.session_state.debug_mode:
-                                st.info(f"✅ Using multi_document_id: {result['multi_document_id']}")
-                        elif "document_id" in result:
+                        # Store document_id for chat history
+                        if "document_id" in result:
                             st.session_state.document_id = result["document_id"]
                             if st.session_state.debug_mode:
-                                st.info(f"✅ Got document_id: {result['document_id']}")
+                                st.info(f"Got document_id: {result['document_id']}")
                         elif "document_ids" in result and result["document_ids"]:
                             # Use the first document ID if we have a list
                             st.session_state.document_id = result["document_ids"][0]
                             if st.session_state.debug_mode:
-                                st.info(f"✅ Using first document_id from document_ids: {result['document_ids'][0]}")
-                        
-                        # Validate the document ID format
-                        if st.session_state.document_id:
-                            if is_valid_uuid(st.session_state.document_id):
-                                if st.session_state.debug_mode:
-                                    st.success(f"✅ Valid UUID format document ID assigned: {st.session_state.document_id}")
-                            else:
-                                st.error(f"🚨 Invalid document ID format received from backend: {st.session_state.document_id}")
-                                st.session_state.document_id = None
-                                
+                                st.info(f"Using first document_id from document_ids: {result['document_ids'][0]}")
+                        elif "multi_document_id" in result:
+                            st.session_state.document_id = result["multi_document_id"]
+                            if st.session_state.debug_mode:
+                                st.info(f"Using multi_document_id: {result['multi_document_id']}")                        
                         # Load chat history
                         if st.session_state.document_id:
                             load_chat_history()
@@ -646,18 +559,24 @@ with tab1:
                                 # Add a slight delay to allow the backend to update
                                 time.sleep(0.5)
                                 
-                                # Add the QA result to our in-memory chat history
+                                # Add the QA result to our chat history
                                 from frontend.components.conversation_simple import add_chat_message, initialize_chat_history
                                 
                                 # Initialize chat history for this document
                                 initialize_chat_history(st.session_state.document_id)
                                 
                                 # Add the new message pair
-                                add_chat_message(
+                                success = add_chat_message(
                                     document_id=st.session_state.document_id,
                                     user_query="Generate a summary of this document",
                                     system_response=result["answer"]
                                 )
+                                
+                                if st.session_state.debug_mode:
+                                    if success:
+                                        st.success("✅ Chat message added successfully!")
+                                    else:
+                                        st.error("❌ Failed to add chat message")
                                 
                                 # Debug the document ID we're using
                                 if st.session_state.debug_mode:

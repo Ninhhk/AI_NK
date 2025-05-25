@@ -17,7 +17,7 @@ class SystemPromptManager:
     Provides functionality to get, set, and apply system prompts to model inputs.
     """
       # Default system prompt if none is set
-    DEFAULT_SYSTEM_PROMPT = """must answer in vietnamese, phải trả lời bằng tiếng việt"""
+    DEFAULT_SYSTEM_PROMPT = """\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"""
     
     def __init__(self, config_path: Optional[str] = None):
         """

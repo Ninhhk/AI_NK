@@ -93,7 +93,7 @@ def test_global_system_prompt():
     
     # Reset to original Vietnamese prompt
     print("\nResetting to Vietnamese prompt...")
-    vietnamese_prompt = "must answer in vietnamese, phải trả lời bằng tiếng việt"
+    vietnamese_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
     
     for endpoint in endpoints:
         try:
