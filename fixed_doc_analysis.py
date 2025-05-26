@@ -449,39 +449,7 @@ with tab1:
                     # Display debug information if enabled
                     if st.session_state.debug_mode and "debug" in result:
                         st.expander("Debug Information").write(result["debug"])
-                    
-                    # Add a standalone chat interface if this is a document that has been analyzed
-                    if st.session_state.document_id and query_type == "qa":
-                        st.markdown("""
-                            <div class="card fade-in" style='margin-top: 2rem;'>
-                                <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                                    💬 Ask More Questions
-                                </h2>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Get the process_question callback function
-                        def process_follow_up_question(question: str) -> str:
-                            """Send the follow-up question to the API and return the response"""
-                            try:
-                                response = requests.post(
-                                    f"{API_BASE_URL}/api/documents/{st.session_state.document_id}/qa",
-                                    json={"query": question}
-                                )
-                                response.raise_for_status()
-                                result = response.json()
-                                
-                                if "answer" in result:
-                                    return result["answer"]
-                                return str(result)
-                            except Exception as e:
-                                return f"Error processing question: {str(e)}"
-                        
-                        # Display the chat interface
-                        chat_interface(
-                            document_id=st.session_state.document_id,
-                            on_submit_callback=process_follow_up_question
-                        )
+                      # Chat interface removed - users can access chat history via the Chat History tab
         else:
             # Summary mode
             st.markdown("""

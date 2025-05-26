@@ -13,7 +13,7 @@ from frontend.components.system_prompt import system_prompt_ui
 
 # Set page config for better appearance
 st.set_page_config(
-    page_title="AI Model Manager",
+    page_title="Quản Lý Model AI",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -71,27 +71,27 @@ OLLAMA_API_URL = "http://localhost:8000/api/ollama"
 SLIDES_API_URL = "http://localhost:8000/api/slides"
 
 def get_models():
-    """Fetch all available models from API"""
+    """Lấy tất cả models có sẵn từ API"""
     try:
         response = requests.get(f"{OLLAMA_API_URL}/models")
         response.raise_for_status()
         return response.json()["models"]
     except Exception as e:
-        st.error(f"Error fetching models: {e}")
+        st.error(f"Lỗi khi lấy models: {e}")
         return []
 
 def get_current_model():
-    """Get the currently active model for slide generation"""
+    """Lấy model đang hoạt động hiện tại cho việc tạo slide"""
     try:
         response = requests.get(f"{SLIDES_API_URL}/current-model")
         response.raise_for_status()
         return response.json()["model_name"]
     except Exception as e:
-        st.error(f"Error fetching current model: {e}")
+        st.error(f"Lỗi khi lấy model hiện tại: {e}")
         return None
 
 def set_model(model_name):
-    """Set the model for slide generation"""
+    """Đặt model cho việc tạo slide"""
     try:
         response = requests.post(
             f"{SLIDES_API_URL}/set-model",
@@ -100,72 +100,72 @@ def set_model(model_name):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        st.error(f"Error setting model: {e}")
+        st.error(f"Lỗi khi đặt model: {e}")
         return None
 
 def pull_model(model_name):
-    """Start pulling a model from Ollama"""
+    """Bắt đầu tải model từ Ollama"""
     try:
         response = requests.post(
             f"{OLLAMA_API_URL}/models/pull",
             data={"model_name": model_name}
         )
         response.raise_for_status()
-        return model_name  # Return the model name as the task ID
+        return model_name  # Trả về tên model làm task ID
     except Exception as e:
-        st.error(f"Error pulling model: {e}")
+        st.error(f"Lỗi khi tải model: {e}")
         return None
 
 def get_download_progress(task_id):
-    """Get download progress for a specific task"""
+    """Lấy tiến trình tải xuống cho một task cụ thể"""
     try:
-        # In the simplified version, we don't track progress
-        # So we'll just return a dummy object
+        # Trong phiên bản đơn giản, chúng ta không theo dõi tiến trình
+        # Nên chúng ta sẽ chỉ trả về một object giả
         return {"done": True, "pull_progress": 1000, "error": None}
     except Exception as e:
         return {"done": False, "pull_progress": 0, "error": str(e)}
 
 def get_all_progress():
-    """Get all download progress"""
+    """Lấy tất cả tiến trình tải xuống"""
     try:
-        # In the simplified version, we don't track progress
+        # Trong phiên bản đơn giản, chúng ta không theo dõi tiến trình
         return {}
     except Exception as e:
         return {}
 
 def cancel_model_pull(task_id):
-    """Cancel model pull"""
-    # In the simplified version, we don't support cancellation
+    """Hủy việc tải model"""
+    # Trong phiên bản đơn giản, chúng ta không hỗ trợ hủy
     return True
 
 def delete_model(model_name):
-    """Delete a model"""
+    """Xóa một model"""
     try:
         response = requests.delete(f"{OLLAMA_API_URL}/models/{model_name}") 
         response.raise_for_status()
         return response.json()["success"]
     except Exception as e:
-        st.error(f"Error deleting model: {e}")
+        st.error(f"Lỗi khi xóa model: {e}")
         return False
 
 def upload_model(file, model_name=None):
-    """Upload a model file"""
-    # In our simplified version, we don't support file uploads
-    st.warning("Model file uploads are not supported in this version")      
+    """Tải lên file model"""
+    # Trong phiên bản đơn giản, chúng ta không hỗ trợ tải lên file
+    st.warning("Tải lên file model không được hỗ trợ trong phiên bản này")      
     return False
 
 def get_system_prompt():
-    """Get the current system prompt."""
+    """Lấy system prompt hiện tại."""
     try:
         response = requests.get(f"{OLLAMA_API_URL}/system-prompt")
         response.raise_for_status()
         return response.json()["system_prompt"]
     except Exception as e:
-        st.error(f"Error fetching system prompt: {e}")
+        st.error(f"Lỗi khi lấy system prompt: {e}")
         return ""
 
 def set_system_prompt(prompt):
-    """Set the system prompt."""
+    """Đặt system prompt."""
     try:
         response = requests.post(
             f"{OLLAMA_API_URL}/system-prompt",
@@ -174,7 +174,7 @@ def set_system_prompt(prompt):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        st.error(f"Error setting system prompt: {e}")
+        st.error(f"Lỗi khi đặt system prompt: {e}")
         return None
 
 # Header section with animated logo and title
@@ -183,10 +183,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                🤖 Model Management
+                🤖 Quản Lý Model
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Manage Your AI Models for All Application Features
+                Quản Lý Các Model AI Cho Tất Cả Tính Năng Ứng Dụng
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -197,28 +197,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Tabs for different sections
-tab1, tab2, tab3, tab4 = st.tabs(["Available Models", "Add New Model", "System Prompt", "Active Downloads"])
+tab1, tab2, tab3, tab4 = st.tabs(["Models Có Sẵn", "Thêm Model Mới", "System Prompt", "Đang Tải Xuống"])
 
 with tab1:
-    # Fetch current model
+    # Lấy model hiện tại
     current_model = get_current_model()
     
-    # Refresh button
-    if st.button("🔄 Refresh Models", type="primary"):
+    # Nút làm mới
+    if st.button("🔄 Làm Mới Models", type="primary"):
         st.experimental_rerun()
     
-    # Get models
+    # Lấy models
     models = get_models()
     
     if not models:
-        st.info("No models available. Add models in the 'Add New Model' tab.")
+        st.info("Không có models nào có sẵn. Thêm models trong tab 'Thêm Model Mới'.")
     else:
-        st.markdown(f"### Available Models ({len(models)})")
-        st.markdown("Select a model to use for all features (slide generation, document analysis, and quiz generation)")
+        st.markdown(f"### Models Có Sẵn ({len(models)})")
+        st.markdown("Chọn một model để sử dụng cho tất cả tính năng (tạo slide, phân tích tài liệu và tạo quiz)")
         
-        # Display global notification about the current model
+        # Hiển thị thông báo toàn cục về model hiện tại
         if current_model:
-            st.info(f"🔄 **Current Active Model: {current_model}** - This model is currently used across all application features.", icon="ℹ️")
+            st.info(f"🔄 **Model Đang Hoạt động: {current_model}** - Model này hiện đang được sử dụng cho tất cả tính năng ứng dụng.", icon="ℹ️")
         
         for model in models:
             with st.container():
@@ -229,172 +229,172 @@ with tab1:
                         <div>
                             <h3 style="margin: 0;">{model['name']}</h3>     
                             <p style="margin: 0; color: var(--text-secondary);">
-                                Size: {model['size'] / (1024*1024):.1f} MB | Modified: {model['modified_at']}
+                                Kích thước: {model['size'] / (1024*1024):.1f} MB | Sửa đổi: {model['modified_at']}
                             </p>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Action buttons in columns
+                # Các nút hành động trong cột
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
                 
                 with col1:
-                    if st.button(f"Select", key=f"select_{model['name']}"):
+                    if st.button(f"Chọn", key=f"select_{model['name']}"):
                         result = set_model(model['name'])
                         if result:
-                            st.success(f"Model changed to {model['name']} and will be used across all features")
+                            st.success(f"Model đã được thay đổi thành {model['name']} và sẽ được sử dụng cho tất cả tính năng")
                             time.sleep(1)
                             st.experimental_rerun()
                 
                 with col2:
-                    if st.button(f"Info", key=f"info_{model['name']}"):
+                    if st.button(f"Thông tin", key=f"info_{model['name']}"):
                         st.json(model['details'] if 'details' in model else model)
                 
                 with col3:
-                    if st.button(f"Delete", key=f"delete_{model['name']}"):
+                    if st.button(f"Xóa", key=f"delete_{model['name']}"):
                         if model['name'] == current_model:
-                            st.error("Cannot delete the currently active model")
+                            st.error("Không thể xóa model đang hoạt động")
                         else:
                             if delete_model(model['name']):
-                                st.success(f"Model {model['name']} deleted")
+                                st.success(f"Model {model['name']} đã được xóa")
                                 time.sleep(1)
                                 st.experimental_rerun()
                 
                 with col4:
                     if model['name'] == current_model:
-                        st.success("✅ Current global model")
+                        st.success("✅ Model toàn cục hiện tại")
 
 with tab2:
-    st.markdown("### Add a New Model")
+    st.markdown("### Thêm Model Mới")
     
-    # Model pull section
-    with st.expander("Pull Model from Ollama", expanded=True):
+    # Phần tải model
+    with st.expander("Tải Model từ Ollama", expanded=True):
         st.markdown("""
-        Enter the name of an Ollama model to download. Examples:
+        Nhập tên của một model Ollama để tải xuống. Ví dụ:
         - `llama3:8b`
         - `gemma3:1b`
         - `mistral:latest`
         """)
         
         with st.form("pull_model_form"):
-            model_name = st.text_input("Model Name", placeholder="e.g., llama3:8b")
-            submitted = st.form_submit_button("Start Download")
+            model_name = st.text_input("Tên Model", placeholder="ví dụ: llama3:8b")
+            submitted = st.form_submit_button("Bắt Đầu Tải Xuống")
             
             if submitted and model_name:
                 task_id = pull_model(model_name)
                 if task_id:
-                    st.success(f"Started downloading {model_name}")
+                    st.success(f"Đã bắt đầu tải xuống {model_name}")
                     time.sleep(1)
                     st.experimental_rerun()
     
-    # Model upload section
-    with st.expander("Upload GGUF Model File", expanded=False):
+    # Phần tải lên model
+    with st.expander("Tải Lên File Model GGUF", expanded=False):
         st.markdown("""
-        Upload a GGUF model file directly. This will be added to Ollama.
+        Tải lên trực tiếp file model GGUF. File này sẽ được thêm vào Ollama.
         """)
         
         with st.form("upload_model_form"):
-            uploaded_file = st.file_uploader("Select GGUF file", type=["gguf"])
-            custom_name = st.text_input("Custom Model Name (optional)")
-            upload_submitted = st.form_submit_button("Upload Model")
+            uploaded_file = st.file_uploader("Chọn file GGUF", type=["gguf"])
+            custom_name = st.text_input("Tên Model Tùy Chỉnh (tùy chọn)")
+            upload_submitted = st.form_submit_button("Tải Lên Model")
             
             if upload_submitted and uploaded_file:
                 success = upload_model(uploaded_file, custom_name if custom_name else None)
                 if success:
-                    st.success(f"Model uploaded successfully")
+                    st.success(f"Model đã được tải lên thành công")
                     time.sleep(1)
                     st.experimental_rerun()
 
 with tab3:
-    st.markdown("### Global System Prompt")
+    st.markdown("### System Prompt Toàn Cục")
     st.markdown("""
     <div class="card fade-in">
         <p>
-            The system prompt is used across all features of the application to control how the AI responds. 
-            This is a global setting that affects slide generation, document analysis, and all other AI interactions.
+            System prompt được sử dụng cho tất cả tính năng của ứng dụng để kiểm soát cách AI phản hồi. 
+            Đây là cài đặt toàn cục ảnh hưởng đến việc tạo slide, phân tích tài liệu và tất cả tương tác AI khác.
         </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # First get the current system prompt from the API
+    # Trước tiên lấy system prompt hiện tại từ API
     current_system_prompt = ""
     try:
         current_system_prompt = get_system_prompt()
     except:
-        # If API is not available, use an empty default prompt
+        # Nếu API không khả dụng, sử dụng prompt mặc định trống
         pass
         
-    # Show the system prompt UI component
+    # Hiển thị component system prompt UI
     system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="model_management")
     
-    # Add a button to save the system prompt globally
+    # Thêm nút để lưu system prompt toàn cục
     col1, col2 = st.columns([1, 3])
     with col1:
-        if st.button("💾 Save System Prompt Globally", type="primary"):
+        if st.button("💾 Lưu System Prompt Toàn Cục", type="primary"):
             result = set_system_prompt(system_prompt)
             if result:
-                st.success("✅ System prompt saved globally and will be used across all features")
+                st.success("✅ System prompt đã được lưu toàn cục và sẽ được sử dụng cho tất cả tính năng")
             else:
-                st.error("❌ Failed to save system prompt")
+                st.error("❌ Không thể lưu system prompt")
     
     with col2:
-        st.warning("This will update the system prompt for **all features** of the application.")
+        st.warning("Điều này sẽ cập nhật system prompt cho **tất cả tính năng** của ứng dụng.")
     
-    # Add a button to run the set_system_prompt.py script
+    # Thêm nút để chạy script set_system_prompt.py
     st.markdown("---")
-    st.markdown("### Reset to Vietnamese Prompt")
+    st.markdown("### Đặt Lại Thành Prompt Tiếng Việt")
     
-    if st.button("🔄 Reset to Vietnamese Prompt"):
+    if st.button("🔄 Đặt Lại Thành Prompt Tiếng Việt"):
         try:
             vietnamese_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
             result = set_system_prompt(vietnamese_prompt)
             if result:
-                st.success("✅ System prompt reset to Vietnamese response requirement")
+                st.success("✅ System prompt đã được đặt lại thành yêu cầu phản hồi tiếng Việt")
                 time.sleep(1)
                 st.experimental_rerun()
             else:
-                st.error("❌ Failed to reset system prompt")
+                st.error("❌ Không thể đặt lại system prompt")
         except Exception as e:
-            st.error(f"Error resetting system prompt: {e}")
+            st.error(f"Lỗi khi đặt lại system prompt: {e}")
 
 with tab4:
-    st.markdown("### Active Downloads")
+    st.markdown("### Đang Tải Xuống")
     
-    # Auto-refresh for download progress
-    auto_refresh = st.checkbox("Auto-refresh (every 2 seconds)", value=True)
+    # Tự động làm mới cho tiến trình tải xuống
+    auto_refresh = st.checkbox("Tự động làm mới (mỗi 2 giây)", value=True)
     
-    # Get all download progress
+    # Lấy tất cả tiến trình tải xuống
     download_progress = get_all_progress()
     
     if not download_progress:
-        st.info("No active downloads. Start a download in the 'Add New Model' tab.")
+        st.info("Không có tải xuống nào đang hoạt động. Bắt đầu tải xuống trong tab 'Thêm Model Mới'.")
     else:
         for model_name, progress in download_progress.items():
             with st.container():
-                # Calculate percentage for display
+                # Tính toán phần trăm để hiển thị
                 percentage = progress.get("pull_progress", 0) / 10 if progress.get("pull_progress") is not None else 0
                 
                 st.markdown(f"""
                 <div class="model-card">
                     <h3>{model_name}</h3>
-                    <p>Status: {"Completed" if progress.get("done", False) else "Downloading..."}</p>
+                    <p>Trạng thái: {"Hoàn thành" if progress.get("done", False) else "Đang tải xuống..."}</p>
                     <div class="model-progress">
                         <div class="model-progress-inner" style="width: {percentage}%;"></div>
                     </div>
-                    <p>{percentage:.1f}% complete</p>
+                    <p>{percentage:.1f}% hoàn thành</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Cancel button
+                # Nút hủy
                 if not progress.get("done", False):
-                    if st.button(f"Cancel", key=f"cancel_{model_name}"):
+                    if st.button(f"Hủy", key=f"cancel_{model_name}"):
                         if cancel_model_pull(model_name):
-                            st.success(f"Cancelled download of {model_name}")
+                            st.success(f"Đã hủy tải xuống {model_name}")
                             time.sleep(1)
                             st.experimental_rerun()
     
-    # Auto-refresh logic
+    # Logic tự động làm mới
     if auto_refresh and download_progress:
         time.sleep(2)
         st.experimental_rerun()
@@ -403,6 +403,6 @@ with tab4:
 st.markdown("""
     <div style='height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent);'></div>
     <div class="footer fade-in">
-        <p style='margin: 0.5em 0;'>Powered by Ollama | Made with ❤️</p>
+        <p style='margin: 0.5em 0;'>Được Hỗ Trợ Bởi Ollama | Được Tạo Với ❤️</p>
     </div>
 """, unsafe_allow_html=True)

@@ -315,24 +315,36 @@ Answer:"""
         difficulty: str = "medium",
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Generate quiz questions from a single document."""
+        """Generate quiz questions from a single document using RAG."""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
             temp_file.write(file_content)
             temp_path = temp_file.name
 
         try:
-            # Load the entire document
+            # Load the document
             loader = PyPDFLoader(temp_path)
             pages = loader.load()
-            text_splitter = RecursiveCharacterTextSplitter()
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200
+            )
             texts = text_splitter.split_documents(pages)
             
-            combined_text = "\n\n".join([doc.page_content for doc in texts])
+            # Create vector store for better retrieval
+            vectorstore = FAISS.from_documents(texts, self.embeddings)
             
-            quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the following text.
+            # Get the overall content for global understanding
+            combined_text = "\n\n".join([doc.page_content for doc in texts[:5]])
+            
+            # Create quiz prompt template
+            quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the document content provided below. 
+Your questions should test key concepts and knowledge from the document.
 
-Text:
+Text overview:
 {text}
+
+Relevant document passages for question creation:
+{relevant_chunks}
 
 Requirements:
 1. Create exactly {num_questions} questions.
@@ -340,6 +352,8 @@ Requirements:
 3. Indicate the correct answer for each question.
 4. Difficulty: {difficulty}
 5. Write all questions and answers in Vietnamese.
+6. Make sure questions are focused on important information from the document.
+7. Ensure questions test understanding, not just memorization.
 
 Format strictly:
 Câu 1: [question text in Vietnamese]
@@ -351,6 +365,24 @@ D. [option D in Vietnamese]
 
 Continue in this format until Câu {num_questions}."""
             
+            # Get relevant context for quiz generation
+            # We'll retrieve relevant chunks for a few key topics from the document
+            topic_prompts = [
+                "What are the main topics covered in this document?",
+                "What are the key concepts in this document?",
+                "What are the most important facts in this document?",
+                "What specific details should quizzes about this document focus on?"
+            ]
+            
+            relevant_chunks = []
+            for prompt in topic_prompts:
+                results = vectorstore.similarity_search(prompt, k=2)
+                relevant_chunks.extend([doc.page_content for doc in results])
+            
+            # Remove duplicates and join
+            relevant_chunks = list(set(relevant_chunks))
+            relevant_text = "\n\n---\n\n".join(relevant_chunks)
+            
             # If a custom system prompt is provided, use it
             if system_prompt:
                 quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
@@ -361,7 +393,7 @@ Continue in this format until Câu {num_questions}."""
                                                                       {"custom_instructions": "Phải trả lời bằng tiếng Việt. KHÔNG được dùng tiếng Anh."})
             
             quiz_prompt = PromptTemplate(
-                input_variables=["text", "num_questions", "difficulty"],
+                input_variables=["text", "relevant_chunks", "num_questions", "difficulty"],
                 template=quiz_template
             )
             
@@ -369,7 +401,8 @@ Continue in this format until Câu {num_questions}."""
             
             chain = LLMChain(llm=self.llm, prompt=quiz_prompt)
             result = chain.invoke({
-                "text": combined_text[:15000],
+                "text": combined_text[:5000],
+                "relevant_chunks": relevant_text[:10000],
                 "num_questions": num_questions,
                 "difficulty": difficulty
             })["text"]
@@ -387,9 +420,10 @@ Continue in this format until Câu {num_questions}."""
         difficulty: str = "medium",
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Generate a quiz from multiple documents."""
+        """Generate a quiz from multiple documents using RAG."""
         import tempfile, os
-        docs_text = []
+        all_chunks = []
+        docs_overview = []
         
         for content, filename in zip(file_contents, filenames):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tf:
@@ -397,21 +431,43 @@ Continue in this format until Câu {num_questions}."""
                 temp_path = tf.name
                 
             try:
-                # Load the entire document
+                # Load the document
                 loader = PyPDFLoader(temp_path)
                 pages = loader.load()
-                splitter = RecursiveCharacterTextSplitter()
+                splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200
+                )
                 chunks = splitter.split_documents(pages)
-                combined = "\n\n".join([doc.page_content for doc in chunks])
-                docs_text.append(f"### Document: {filename}\n{combined}")
+                
+                # Add document reference to each chunk for traceability
+                for chunk in chunks:
+                    chunk.metadata["source"] = filename
+                
+                all_chunks.extend(chunks)
+                
+                # Create a brief overview of this document for the prompt
+                doc_preview = "\n".join([doc.page_content for doc in chunks[:2]])
+                docs_overview.append(f"### Document: {filename}\n{doc_preview[:1000]}...")
             finally:
                 os.unlink(temp_path)
         
-        all_text = "\n\n---\n\n".join(docs_text)
+        # Create a vector store from all document chunks
+        if not all_chunks:
+            return {"result": "No content could be extracted from the documents."}
         
-        quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the following documents and their content.
+        vectorstore = FAISS.from_documents(all_chunks, self.embeddings)
+        all_docs_overview = "\n\n---\n\n".join(docs_overview)
+        
+        # Create quiz prompt template
+        quiz_template = """Generate exactly {num_questions} multiple-choice questions based on the multiple documents provided.
+Your questions should test key concepts and knowledge from these documents.
 
-{all_text}
+Documents overview:
+{all_docs_overview}
+
+Relevant document passages for question creation:
+{relevant_chunks}
 
 Requirements:
 1. Create exactly {num_questions} questions.
@@ -419,6 +475,9 @@ Requirements:
 3. Indicate the correct answer for each question.
 4. Difficulty: {difficulty}
 5. Write all questions and answers in Vietnamese.
+6. Make questions that span across different documents when appropriate.
+7. Ensure questions test understanding, not just memorization.
+8. Include some questions that compare or contrast information from different documents.
 
 Format strictly:
 Câu 1: [question text in Vietnamese]
@@ -430,6 +489,26 @@ D. [option D in Vietnamese]
 
 Continue in this format until Câu {num_questions}."""
         
+        # Get relevant context for quiz generation
+        topic_prompts = [
+            "What are the main topics covered in these documents?",
+            "What are the key concepts in these documents?",
+            "What are the most important facts in these documents?",
+            "What similarities and differences exist between these documents?",
+            "What specific details should quizzes about these documents focus on?"
+        ]
+        
+        relevant_chunks = []
+        for prompt in topic_prompts:
+            results = vectorstore.similarity_search(prompt, k=3)
+            for doc in results:
+                source = doc.metadata.get("source", "unknown")
+                relevant_chunks.append(f"From {source}:\n{doc.page_content}")
+        
+        # Remove duplicates and join
+        relevant_chunks = list(set(relevant_chunks))
+        relevant_text = "\n\n---\n\n".join(relevant_chunks)
+        
         # If a custom system prompt is provided, use it
         if system_prompt:
             quiz_template = system_prompt_manager.apply_system_prompt(quiz_template, 
@@ -440,13 +519,20 @@ Continue in this format until Câu {num_questions}."""
                                                                    {"custom_instructions": "Phải trả lời bằng tiếng Việt. KHÔNG được dùng tiếng Anh."})
         
         quiz_prompt = PromptTemplate(
-            input_variables=["all_text", "num_questions", "difficulty"],
+            input_variables=["all_docs_overview", "relevant_chunks", "num_questions", "difficulty"],
             template=quiz_template
         )
         
         self.llm.temperature = max(0.1, min(self.temperature, 0.7))
         chain = LLMChain(llm=self.llm, prompt=quiz_prompt)
-        result = chain.invoke({"all_text": all_text, "num_questions": num_questions, "difficulty": difficulty})["text"]
+        
+        result = chain.invoke({
+            "all_docs_overview": all_docs_overview[:5000], 
+            "relevant_chunks": relevant_text[:10000],
+            "num_questions": num_questions, 
+            "difficulty": difficulty
+        })["text"]
+        
         sanitized = sanitize_quiz_content(result)
         return {"result": sanitized}
         

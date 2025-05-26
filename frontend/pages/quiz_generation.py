@@ -16,7 +16,7 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
 # Set page config for better appearance
 st.set_page_config(
-    page_title="AI Quiz Generator",
+    page_title="Tạo Bài Trắc Nghiệm AI",
     page_icon="❓",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -28,27 +28,27 @@ with open('frontend/style.css') as f:
 
 # Function to get the current model
 def get_current_model():
-    """Get the currently active model from the API"""
+    """Lấy model đang hoạt động hiện tại từ API"""
     try:
         response = requests.get(f"{API_BASE_URL}/api/slides/current-model")
         response.raise_for_status()
         return response.json()["model_name"]
     except Exception as e:
-        st.error(f"Error fetching current model: {e}")
+        st.error(f"Lỗi khi lấy model hiện tại: {e}")
         return None
 
 def get_system_prompt():
-    """Get the current system prompt."""
+    """Lấy system prompt hiện tại."""
     try:
         response = requests.get(f"{API_BASE_URL}/api/documents/system-prompt")
         response.raise_for_status()
         return response.json()["system_prompt"]
     except Exception as e:
-        st.error(f"Error fetching system prompt: {e}")
+        st.error(f"Lỗi khi lấy system prompt: {e}")
         return ""
 
 def set_system_prompt(prompt: str):
-    """Set the system prompt."""
+    """Đặt system prompt."""
     try:
         response = requests.post(
             f"{API_BASE_URL}/api/documents/system-prompt",
@@ -57,7 +57,7 @@ def set_system_prompt(prompt: str):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        st.error(f"Error setting system prompt: {e}")
+        st.error(f"Lỗi khi đặt system prompt: {e}")
         return None
 
 def generate_quiz(
@@ -66,41 +66,50 @@ def generate_quiz(
     difficulty: str = "medium",
     model_name: str = None,
     system_prompt: str = None,
+    use_multiple_endpoint: bool = False,
 ) -> dict:
-    """Send document to backend for quiz generation."""
-    # Prepare multipart payload for multiple files
+    """Gửi tài liệu đến backend để tạo bài trắc nghiệm."""
+    # Chuẩn bị multipart payload cho nhiều files
     files_dict = {}
-    # Primary file
-    if files:
+    
+    # Always use the single endpoint for now
+    endpoint = "/api/documents/generate-quiz"
+    
+    if len(files) == 1:
+        # Single file quiz endpoint
         f0 = files[0]
         files_dict['file'] = (f0.name, f0.read(), f0.type)
-    # Extra files parameters (up to 5)
-    for i, f in enumerate(files[1:6], start=1):
-        files_dict[f'extra_files_{i}'] = (f.name, f.read(), f.type)
-    # Also include array format for newer APIs
-    for i, f in enumerate(files):
-        files_dict[f'files[{i}]'] = (f.name, f.read(), f.type)
+    else:
+        # Multi-file handling with proper parameter names
+        # Main file
+        f0 = files[0]
+        files_dict['file'] = (f0.name, f0.read(), f0.type)
+        
+        # Extra files (up to 5)
+        for i, f in enumerate(files[1:6], start=1):
+            if i <= 5:  # Ensure we don't exceed the limit
+                files_dict[f'extra_files_{i}'] = (f.name, f.read(), f.type)
     
     data = {
         "num_questions": str(num_questions),
         "difficulty": difficulty,
     }
     
-    # Add model_name if specified
+    # Thêm model_name nếu được chỉ định
     if model_name:
         data["model_name"] = model_name
-      # Add system_prompt if specified
+    # Thêm system_prompt nếu được chỉ định
     if system_prompt:
-        # Ensure Vietnamese requirement is included in the system prompt
+        # Đảm bảo yêu cầu tiếng Việt được bao gồm trong system prompt
         if "vietnam" not in system_prompt.lower() and "tiếng việt" not in system_prompt.lower():
             system_prompt = f"Phải trả lời bằng tiếng Việt. {system_prompt}"
         data["system_prompt"] = system_prompt
     else:
-        # Add a default Vietnamese system prompt if none is provided
+        # Thêm system prompt tiếng Việt mặc định nếu không có
         data["system_prompt"] = "Phải trả lời bằng tiếng Việt. Tạo bài trắc nghiệm theo định dạng rõ ràng."
         
     response = requests.post(
-        f"{API_BASE_URL}/api/documents/generate-quiz",
+        f"{API_BASE_URL}{endpoint}",
         files=files_dict,
         data=data,
     )
@@ -113,10 +122,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                ❓ AI Quiz Generator
+                ❓ Tạo Bài Trắc Nghiệm AI
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Automatically generate quizzes from your documents
+                Tự động tạo bài trắc nghiệm từ tài liệu của bạn
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -131,7 +140,7 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                ⚙️ Settings
+                ⚙️ Cài Đặt
             </h2>
         </div>
     """, unsafe_allow_html=True)
@@ -139,107 +148,136 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📤 Upload Documents
+                📤 Tải Lên Tài Liệu
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
-    files = st.file_uploader("Select PDF files", type=["pdf"], accept_multiple_files=True)
+    files = st.file_uploader("Chọn file PDF", type=["pdf"], accept_multiple_files=True)
     if files:
         st.markdown(f"""
             <div style='background-color: var(--success-color); color: white; padding: 0.5rem; border-radius: 5px; margin-top: 0.5em;'>
-                ✅ {len(files)} file(s) uploaded successfully            </div>
+                ✅ {len(files)} file đã được tải lên thành công
+            </div>
         """, unsafe_allow_html=True)
+        
+        # Option to use multiple document mode for RAG
+        if len(files) > 1:
+            use_multiple = st.checkbox(
+                "Sử dụng chế độ nhiều tài liệu (RAG)", 
+                value=True,
+                help="Khi chọn, hệ thống sẽ phân tích và tạo câu hỏi dựa trên mối quan hệ giữa các tài liệu."
+            )
+        else:
+            use_multiple = False
         
     st.markdown("""
         <div class="card fade-in">
             <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                🎯 Quiz Options
+                🎯 Tùy Chọn Bài Trắc Nghiệm
             </h3>
         </div>
     """, unsafe_allow_html=True)
     
     num_questions = st.slider(
-        "Number of questions:",
+        "Số lượng câu hỏi:",
         min_value=1,
         max_value=20,
         value=5,
-        help="Select the number of questions for the quiz"
+        help="Chọn số lượng câu hỏi cho bài trắc nghiệm"
     )
     
+    difficulty_options = ["easy", "medium", "hard"]
+    difficulty_labels = ["Dễ", "Trung bình", "Khó"]
     difficulty = st.select_slider(
-        "Difficulty:",
-        options=["easy", "medium", "hard"],
+        "Độ khó:",
+        options=difficulty_options,
         value="medium",
-        format_func=lambda x: x.capitalize(),
-        help="Select the difficulty level for the questions"
+        format_func=lambda x: difficulty_labels[difficulty_options.index(x)],
+        help="Chọn mức độ khó cho các câu hỏi"
     )
-      # Display current model information
+    
+    # Hiển thị thông tin model hiện tại
     current_model = get_current_model()
     if current_model:
-        st.info(f"🤖 Using model: **{current_model}**. You can change the model in the Model Management page.", icon="ℹ️")
+        st.info(f"🤖 Đang sử dụng model: **{current_model}**. Bạn có thể thay đổi model trong trang Quản Lý Model.", icon="ℹ️")
         
-    # Add system prompt UI - first try to get current system prompt
+    # Thêm system prompt UI - trước tiên thử lấy system prompt hiện tại
     current_system_prompt = ""
     try:
         current_system_prompt = get_system_prompt()
     except:
-        # If API is not available, use an empty default prompt
+        # Nếu API không khả dụng, sử dụng prompt mặc định trống
         pass
         
-    # Show the system prompt UI component
+    # Hiển thị component system prompt UI
     system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="quiz_gen")
     
-    # Add a button to save the system prompt globally
-    if st.button("💾 Save System Prompt Globally"):
+    # Thêm nút để lưu system prompt toàn cục
+    if st.button("💾 Lưu System Prompt Toàn Cục"):
         result = set_system_prompt(system_prompt)
         if result:
-            st.success("✅ System prompt saved globally")
+            st.success("✅ System prompt đã được lưu toàn cục")
         else:
-            st.error("❌ Failed to save system prompt")
+            st.error("❌ Không thể lưu system prompt")
 
 # Main content area
-if st.button("🚀 Generate Quiz", type="primary"):
+if st.button("🚀 Tạo Bài Trắc Nghiệm", type="primary"):
     if not files:
-        st.error("⚠️ Please upload at least one PDF before generating a quiz.")
+        st.error("⚠️ Vui lòng tải lên ít nhất một file PDF trước khi tạo bài trắc nghiệm.")
     else:
-        # Variables to store results outside the status block
+        # Biến để lưu trữ kết quả bên ngoài status block
         quiz_result = None
         elapsed_time = 0
         actual_questions = 0
+        is_multi_document = False
 
-        # Process the file and generate quiz
-        with st.status("🔄 Creating quiz...", expanded=True) as status:
-            status.update(label="🔄 Processing document...", state="running")
+        # Xử lý file và tạo bài trắc nghiệm
+        with st.status("🔄 Đang tạo bài trắc nghiệm...", expanded=True) as status:
+            status.update(label="🔄 Đang xử lý tài liệu...", state="running")
             try:
                 start_time = time.time()
+                is_multi_document = len(files) > 1 and 'use_multiple' in locals() and use_multiple
 
-                # Add progress updates
-                time.sleep(0.5)  # Brief pause for visual feedback
-                status.update(label="🔄 Analyzing content...", state="running")
-                time.sleep(0.5)  # Brief pause for visual feedback
-                status.update(label="🔄 Generating questions... This may take a few minutes.", state="running")
+                # Thêm cập nhật tiến trình
+                time.sleep(0.5)  # Tạm dừng ngắn để phản hồi trực quan
+                if is_multi_document:
+                    status.update(label=f"🔄 Đang phân tích {len(files)} tài liệu và tìm mối liên hệ...", state="running")
+                else:
+                    status.update(label="🔄 Đang phân tích nội dung...", state="running")
+                    
+                time.sleep(0.5)  # Tạm dừng ngắn để phản hồi trực quan
+                status.update(label="🔄 Đang tạo câu hỏi... Có thể mất vài phút.", state="running")
                 model_name = get_current_model()
+                
+                # Gọi API với cờ để sử dụng endpoint nhiều tài liệu nếu cần
                 result = generate_quiz(
                     files=files,
                     num_questions=num_questions,
                     difficulty=difficulty,
                     model_name=model_name,
-                    system_prompt=st.session_state.get('quiz_gen_system_prompt', "")
+                    system_prompt=st.session_state.get('quiz_gen_system_prompt', ""),
+                    use_multiple_endpoint=is_multi_document
                 )
+                
                 elapsed_time = time.time() - start_time
-                status.update(label=f"✅ Completed in {elapsed_time:.1f} seconds!", state="complete", expanded=False)
-                # Store results for use outside the status block
+                
+                if is_multi_document:
+                    status.update(label=f"✅ Hoàn thành trong {elapsed_time:.1f} giây! Đã tạo bài trắc nghiệm từ {len(files)} tài liệu.", state="complete", expanded=False)
+                else:
+                    status.update(label=f"✅ Hoàn thành trong {elapsed_time:.1f} giây!", state="complete", expanded=False)
+                
+                # Lưu trữ kết quả để sử dụng bên ngoài status block
                 quiz_result = result
-
-                # Extract quiz text and guard against missing content
                 quiz_text = quiz_result.get("result", "")
+                
+                # Trích xuất văn bản quiz và bảo vệ chống nội dung bị thiếu
                 if not quiz_text.strip():
-                    st.error("⚠️ Backend returned no quiz content. Full response:")
+                    st.error("⚠️ Backend không trả về nội dung bài trắc nghiệm. Phản hồi đầy đủ:")
                     st.json(quiz_result)
                     st.stop()
 
-                # Count questions - check for both English and Vietnamese formats
+                # Đếm câu hỏi - kiểm tra cả định dạng tiếng Anh và tiếng Việt
                 english_questions = quiz_text.count("Question ")
                 vietnamese_questions = quiz_text.count("Câu ")
                 option_count = quiz_text.count("A. ")
@@ -248,16 +286,21 @@ if st.button("🚀 Generate Quiz", type="primary"):
                     actual_questions = option_count
 
             except Exception as e:
-                status.update(label="❌ Error", state="error", expanded=True)
-                st.error(f"⚠️ An error occurred: {str(e)}")
-                st.error("Please try again or adjust the parameters.")
+                status.update(label="❌ Lỗi", state="error", expanded=True)
+                st.error(f"⚠️ Đã xảy ra lỗi: {str(e)}")
+                st.error("Vui lòng thử lại hoặc điều chỉnh các tham số.")
 
-        # Display results only if we have a valid quiz_text
-        if quiz_result and quiz_text:
+        # Hiển thị kết quả chỉ khi chúng ta có quiz_text hợp lệ
+        if quiz_result and 'quiz_text' in locals() and quiz_text:
+            title_text = "📝 Bài Trắc Nghiệm"
+            if is_multi_document:
+                title_text += f" (Đa tài liệu - {len(files)} tài liệu)"
+            title_text += f" ({actual_questions} câu hỏi)"
+            
             st.markdown(f"""
                 <div class="card fade-in">
                     <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                        📝 Bài trắc nghiệm ({actual_questions} câu hỏi)
+                        {title_text}
                     </h2>
                 </div>
             """, unsafe_allow_html=True)
@@ -273,7 +316,7 @@ if st.button("🚀 Generate Quiz", type="primary"):
                         questions.append(current.strip())
                     current = line
                 elif re.match(r'^[A-D]\.', line.strip()) and not current:
-                    current = f"Question {len(questions) + 1}:\n{line}"
+                    current = f"Câu {len(questions) + 1}:\n{line}"
                 elif current:
                     current += "\n" + line
 
@@ -292,7 +335,7 @@ if st.button("🚀 Generate Quiz", type="primary"):
                         <div style='background-color: #1e2130; padding: 15px; 
                              border-radius: 10px; border-left: 4px solid var(--primary-color); 
                              margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-                            <h4 style='color: var(--primary-color); margin-top: 0;'>{'Câu hỏi' if 'Câu' in question else 'Question'} {i}</h4>
+                            <h4 style='color: var(--primary-color); margin-top: 0;'>Câu Hỏi {i}</h4>
                             <div style='font-size: 1.1em; white-space: pre-line; color: #e6e6e6;'>{question}</div>
                         </div>
                     """, unsafe_allow_html=True)
@@ -314,7 +357,7 @@ if st.button("🚀 Generate Quiz", type="primary"):
                         <div style='background-color: #1e2130; padding: 15px; 
                              border-radius: 10px; border-left: 4px solid var(--primary-color); 
                              margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-                            <h4 style='color: var(--primary-color); margin-top: 0;'>Quiz Content</h4>
+                            <h4 style='color: var(--primary-color); margin-top: 0;'>Nội Dung Bài Trắc Nghiệm</h4>
                             <div style='font-size: 1.1em; white-space: pre-line; color: #e6e6e6;'>{quiz_text}</div>
                         </div>
                     """, unsafe_allow_html=True)
@@ -322,15 +365,19 @@ if st.button("🚀 Generate Quiz", type="primary"):
             st.markdown(f"""
                 <div class="card fade-in" style='margin-top: 1rem;'>
                     <p style='margin: 0; color: var(--text-primary);'>
-                        <strong>⏱️ Thời gian thực thi:</strong> {elapsed_time:.2f} giây
+                        <strong>⏱️ Thời Gian Thực Hiện:</strong> {elapsed_time:.2f} giây
                     </p>
                 </div>
             """, unsafe_allow_html=True)
 
+            download_label = "📥 Tải Xuống Bài Trắc Nghiệm"
+            if is_multi_document:
+                download_label = "📥 Tải Xuống Bài Trắc Nghiệm Đa Tài Liệu"
+                
             st.download_button(
-                label="📥 Tải xuống bài trắc nghiệm",
+                label=download_label,
                 data=quiz_text,
-                file_name=f"quiz_{num_questions}q_{difficulty}.txt",
+                file_name=f"bai_trac_nghiem_{num_questions}cau_{difficulty_labels[difficulty_options.index(difficulty)]}{'_da_tai_lieu' if is_multi_document else ''}.txt",
                 mime="text/plain",
             )
 
@@ -338,6 +385,6 @@ if st.button("🚀 Generate Quiz", type="primary"):
 st.markdown("""
     <div style='height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent);'></div>
     <div class="footer fade-in">
-        <p style='margin: 0.5em 0;'>Powered by AI Technology | Made with ❤️</p>
+        <p style='margin: 0.5em 0;'>Được Hỗ Trợ Bởi Công Nghệ AI | Được Tạo Với ❤️</p>
     </div>
 """, unsafe_allow_html=True)

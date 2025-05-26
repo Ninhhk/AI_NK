@@ -1,10 +1,25 @@
 [tool.poetry]
 name = "ai-nvcb"
-version = "0.1.0"
-description = "AI-powered document analysis and presentation generation"
-authors = ["Your Name <your.email@example.com>"]
+version = "2.0.0"
+description = "AI-powered document analysis, slide generation, and quiz creation with RAG support"
+authors = ["AI NVCB Team <admin@ai-nvcb.com>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/ai-nvcb/ai-nvcb"
+repository = "https://github.com/ai-nvcb/ai-nvcb"
+documentation = "https://github.com/ai-nvcb/ai-nvcb/blob/main/README.md"
+keywords = ["ai", "document-analysis", "quiz-generation", "slide-generation", "rag", "streamlit", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Education",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic"
+]
 packages = [
     { include = "backend" },
     { include = "frontend" }
@@ -12,34 +27,88 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-fastapi = "^0.110.0"
-uvicorn = "^0.27.1"
-python-multipart = "^0.0.9"
-openai = "^1.14.3"
-langchain = "^0.1.20"
-langchain-community = "^0.0.38"
-langchain-openai = "^0.1.1"
-rich = "^13.7.1"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+python-multipart = "^0.0.12"
+openai = "^1.58.0"
+langchain = "^0.3.0"
+langchain-community = "^0.3.0"
+langchain-openai = "^0.2.0"
+rich = "^13.9.0"
 python-dotenv = "^1.0.1"
-pypdf = "^4.1.0"
+pypdf = "^5.1.0"
 PyPDF2 = "^3.0.1"
-python-docx = "^1.1.0"
-tiktoken = "^0.6.0"
-streamlit = "^1.32.2"
-pillow = "^10.3.0"
-lxml = "^5.2.2"
+python-docx = "^1.1.2"
+tiktoken = "^0.8.0"
+streamlit = "^1.40.0"
+pillow = "^11.0.0"
+lxml = "^5.3.0"
 XlsxWriter = "^3.2.0"
-python-pptx = "^0.6.23"
-gpt4all = "^2.7.0"
-Flask = "^2.2.5"
-Flask-Cors = "^4.0.0"
-sentence-transformers = "^2.5.1"
-faiss-cpu = "^1.7.3"
+python-pptx = "^1.0.2"
+gpt4all = "^2.8.0"
+Flask = "^3.1.0"
+Flask-Cors = "^5.0.0"
+sentence-transformers = "^3.3.0"
+faiss-cpu = "^1.9.0"
 langdetect = "^1.0.9"
+requests = "^2.32.0"
+numpy = "^2.0.0"
+pandas = "^2.2.0"
+apscheduler = "^3.10.4"
 
 [tool.poetry.group.dev.dependencies]
-jupyter = "^1.0.0"
-pytest = "^8.1.1"
+jupyter = "^1.1.0"
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+black = "^24.0.0"
+isort = "^5.13.0"
+flake8 = "^7.1.0"
+mypy = "^1.13.0"
+pre-commit = "^4.0.0"
+
+[tool.poetry.group.test.dependencies]
+httpx = "^0.28.0"
+pytest-mock = "^3.14.0"
+
+# Tool configurations for better CI/CD
+[tool.black]
+line-length = 88
+target-version = ['py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=backend --cov=frontend --cov-report=html --cov-report=term-missing"
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
 
 [build-system]
 requires = ["poetry-core"]

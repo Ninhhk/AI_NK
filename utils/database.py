@@ -3,8 +3,15 @@ import os
 import json
 import uuid
 import time
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
+from datetime import datetime, timedelta
+import logging
+
+# Configure logging for database operations
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Base paths for our storage
 BASE_DIR = Path(__file__).parent.parent
@@ -202,3 +209,104 @@ def deserialize_meta(meta_str: str) -> Dict:
         return json.loads(meta_str)
     except Exception:
         return {}
+
+# Auto vacuum functionality
+class DatabaseAutoVacuum:
+    """Automatic database vacuum scheduler"""
+    
+    def __init__(self):
+        self.vacuum_thread = None
+        self.stop_event = threading.Event()
+        self.last_vacuum_file = STORAGE_DIR / ".last_vacuum"
+        
+    def should_vacuum_today(self) -> bool:
+        """Check if vacuum should run today"""
+        if not self.last_vacuum_file.exists():
+            return True
+            
+        try:
+            with open(self.last_vacuum_file, 'r') as f:
+                last_vacuum_date = f.read().strip()
+                last_date = datetime.fromisoformat(last_vacuum_date)
+                today = datetime.now().date()
+                return last_date.date() < today
+        except Exception:
+            return True
+    
+    def mark_vacuum_done(self):
+        """Mark that vacuum was completed today"""
+        try:
+            with open(self.last_vacuum_file, 'w') as f:
+                f.write(datetime.now().isoformat())
+        except Exception as e:
+            logger.error(f"Failed to mark vacuum done: {e}")
+    
+    def run_daily_vacuum(self):
+        """Run vacuum if needed today"""
+        if self.should_vacuum_today():
+            logger.info("Running daily database vacuum...")
+            try:
+                success = Storage.vacuum_database()
+                if success:
+                    self.mark_vacuum_done()
+                    logger.info("Database vacuum completed successfully")
+                else:
+                    logger.error("Database vacuum failed")
+            except Exception as e:
+                logger.error(f"Error during daily vacuum: {e}")
+        else:
+            logger.debug("Database vacuum already completed today")
+    
+    def vacuum_scheduler(self):
+        """Background thread for vacuum scheduling"""
+        while not self.stop_event.is_set():
+            try:
+                # Check if we should vacuum (once per day)
+                self.run_daily_vacuum()
+                
+                # Wait 1 hour before checking again
+                if self.stop_event.wait(3600):  # 1 hour = 3600 seconds
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Error in vacuum scheduler: {e}")
+                # Wait a bit before retrying
+                if self.stop_event.wait(300):  # 5 minutes
+                    break
+    
+    def start(self):
+        """Start the auto vacuum scheduler"""
+        if self.vacuum_thread is None or not self.vacuum_thread.is_alive():
+            self.stop_event.clear()
+            self.vacuum_thread = threading.Thread(target=self.vacuum_scheduler, daemon=True)
+            self.vacuum_thread.start()
+            logger.info("Auto vacuum scheduler started")
+    
+    def stop(self):
+        """Stop the auto vacuum scheduler"""
+        if self.vacuum_thread and self.vacuum_thread.is_alive():
+            self.stop_event.set()
+            self.vacuum_thread.join(timeout=5)
+            logger.info("Auto vacuum scheduler stopped")
+
+# Global auto vacuum instance
+_auto_vacuum = DatabaseAutoVacuum()
+
+def start_auto_vacuum():
+    """Start the automatic daily database vacuum"""
+    _auto_vacuum.start()
+
+def stop_auto_vacuum():
+    """Stop the automatic daily database vacuum"""
+    _auto_vacuum.stop()
+
+def manual_vacuum() -> bool:
+    """Manually trigger database vacuum"""
+    logger.info("Manual database vacuum requested")
+    success = Storage.vacuum_database()
+    if success:
+        _auto_vacuum.mark_vacuum_done()
+        logger.info("Manual database vacuum completed")
+    else:
+        logger.error("Manual database vacuum failed")
+    return success

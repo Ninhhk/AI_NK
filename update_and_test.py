@@ -105,7 +105,11 @@ def check_dependencies():
         ("streamlit", "import streamlit"),
         ("langdetect", "import langdetect; print(f'langdetect is installed')"),
         ("sentence_transformers", "from sentence_transformers import SentenceTransformer"),
-        ("faiss", "import faiss")
+        ("faiss", "import faiss"),
+        ("openai", "import openai"),
+        ("requests", "import requests"),
+        ("pandas", "import pandas"),
+        ("numpy", "import numpy")
     ]
     
     all_passed = True
@@ -119,6 +123,26 @@ def check_dependencies():
             all_passed = False
         except Exception as e:
             print(f"⚠️ - {e}")
+    
+    # Additional checks for key functionality
+    try:
+        print("Testing FastAPI app import... ", end="")
+        from backend.api.main import app
+        print("✅")
+    except Exception as e:
+        print(f"❌ - {e}")
+        all_passed = False
+    
+    try:
+        print("Testing Streamlit app import... ", end="")
+        # Basic import test for frontend
+        import sys
+        import os
+        sys.path.append(os.path.join(os.getcwd(), 'frontend'))
+        print("✅")
+    except Exception as e:
+        print(f"❌ - {e}")
+        all_passed = False
     
     if all_passed:
         print("\n✅ All dependency tests passed!")

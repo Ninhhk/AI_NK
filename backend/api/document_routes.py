@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, List
 import logging
 import traceback
 import uuid
+import hashlib
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -30,6 +31,34 @@ chat_history_repo = ChatHistoryRepository()
 # Simple user dependency for now - in production you'd have proper auth
 def get_current_user():
     return {"id": "default_user"}
+
+def generate_content_based_document_id(file_content: bytes, filename: str) -> str:
+    """
+    Generate a consistent UUID-format document ID based on file content and name.
+    This ensures the same file gets the same ID across different sessions.
+    """
+    # Create a hash from file content and filename for uniqueness
+    content_hash = hashlib.md5(file_content + filename.encode()).hexdigest()
+    
+    # Convert the hash into a UUID namespace format for consistency
+    # Use the first 32 characters of the hash to create a deterministic UUID
+    uuid_str = f"{content_hash[:8]}-{content_hash[8:12]}-{content_hash[12:16]}-{content_hash[16:20]}-{content_hash[20:32]}"
+    return uuid_str
+
+def generate_multi_document_id(file_contents: List[bytes], filenames: List[str]) -> str:
+    """
+    Generate a consistent UUID-format ID for multi-document analysis.
+    This ensures the same set of documents gets the same multi-document ID.
+    """
+    # Create a combined hash from all file contents and names
+    combined_content = b"".join(file_contents)
+    combined_names = "|".join(sorted(filenames))  # Sort to ensure consistent order
+    
+    combined_hash = hashlib.md5(combined_content + combined_names.encode()).hexdigest()
+    
+    # Convert to UUID format
+    uuid_str = f"{combined_hash[:8]}-{combined_hash[8:12]}-{combined_hash[12:16]}-{combined_hash[16:20]}-{combined_hash[20:32]}"
+    return uuid_str
 
 @router.post("/analyze")
 async def analyze_document(
@@ -90,8 +119,7 @@ async def analyze_document(
     if not all_files:
         logger.warning("No files provided for document analysis")
         return {"result": "No files provided. Please upload at least one document for analysis."}
-    
-    # Set model if provided
+      # Set model if provided
     if model_name:
         document_service.set_model(model_name)
         logger.info(f"Using model {model_name} for document analysis")
@@ -107,11 +135,15 @@ async def analyze_document(
             await f.seek(0)
             file_content = await f.read()
             
+            # Generate content-based document ID
+            content_based_id = generate_content_based_document_id(file_content, f.filename)
+            
             # Save file to storage system
             file_id, file_path = Storage.upload_file(file_content, f.filename)
             
-            # Insert document record in database
-            document = document_repo.insert_document(
+            # Insert or get existing document record in database
+            document = document_repo.insert_or_get_document(
+                document_id=content_based_id,
                 user_id=current_user["id"],
                 filename=f.filename,
                 path=file_path,
@@ -120,6 +152,7 @@ async def analyze_document(
                 meta={
                     "original_filename": f.filename,
                     "content_type": f.content_type,
+                    "content_based_id": True,  # Flag to indicate this uses content-based ID
                 }
             )
             
@@ -171,15 +204,15 @@ async def analyze_document(
                 user_query=user_query,
                 system_prompt=system_prompt,
             )
-            
-            # Store in chat history with references to all documents
+              # Store in chat history with references to all documents
             if query_type == "qa" and user_query:
-                # Create a combined document ID for multi-document analysis
-                combined_doc_id = f"multi_{str(uuid.uuid4())[:8]}"
+                # Generate content-based multi-document ID
+                multi_doc_id = generate_multi_document_id(file_contents, filenames)
                 
                 # Create a placeholder document record for multi-document analysis
                 combined_filenames = ', '.join(filenames)
-                placeholder_document = document_repo.insert_document(
+                placeholder_document = document_repo.insert_or_get_document(
+                    document_id=multi_doc_id,
                     user_id=current_user["id"],
                     filename=f"Combined: {combined_filenames[:100]}{'...' if len(combined_filenames) > 100 else ''}",
                     path="",  # No physical path for this virtual document
@@ -188,7 +221,8 @@ async def analyze_document(
                     meta={
                         "is_multi_document": True,
                         "document_ids": document_ids,
-                        "document_names": filenames
+                        "document_names": filenames,
+                        "content_based_id": True,  # Flag to indicate this uses content-based ID
                     }
                 )
                   # Use the actual document ID from the placeholder record
@@ -201,15 +235,17 @@ async def analyze_document(
                         "document_ids": document_ids,
                         "document_names": filenames
                     }
-                )
-                # Add chat history ID to result
+                )                # Add chat history ID to result
                 result["chat_id"] = chat_entry["id"]
                 # Add placeholder document ID to result
                 result["multi_document_id"] = placeholder_document["id"]
             else:
                 # For non-QA operations, create a proper placeholder document as well
+                multi_doc_id = generate_multi_document_id(file_contents, filenames)
+                
                 combined_filenames = ', '.join(filenames)
-                placeholder_document = document_repo.insert_document(
+                placeholder_document = document_repo.insert_or_get_document(
+                    document_id=multi_doc_id,
                     user_id=current_user["id"],
                     filename=f"Summary: {combined_filenames[:100]}{'...' if len(combined_filenames) > 100 else ''}",
                     path="",  # No physical path for this virtual document
@@ -219,9 +255,12 @@ async def analyze_document(
                         "is_multi_document": True,
                         "is_summary_only": True,
                         "document_ids": document_ids,
-                        "document_names": filenames
+                        "document_names": filenames,
+                        "content_based_id": True,  # Flag to indicate this uses content-based ID
                     }
                 )
+                # Use the actual document ID from the placeholder record
+                result["multi_document_id"] = placeholder_document["id"]
                 # Use the actual document ID from the placeholder record
                 result["multi_document_id"] = placeholder_document["id"]
         
@@ -442,6 +481,156 @@ async def generate_quiz(
         logger.error(f"Error generating quiz: {str(e)}")
         logger.error(traceback.format_exc())
         return {"result": f"Error generating quiz: {str(e)}"}
+
+@router.post("/generate-quiz-multiple")
+async def generate_quiz_multiple(
+    num_questions: int = Form(5),
+    difficulty: str = Form("medium"),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = None,
+    extra_files_1: Optional[UploadFile] = File(None),
+    extra_files_2: Optional[UploadFile] = File(None),
+    extra_files_3: Optional[UploadFile] = File(None),
+    extra_files_4: Optional[UploadFile] = File(None),
+    extra_files_5: Optional[UploadFile] = File(None),
+    model_name: Optional[str] = Form(None),
+    system_prompt: Optional[str] = Form(None),
+    current_user: Dict = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Generate a quiz from multiple documents using the document analysis service.
+    
+    Parameters:
+    - num_questions: Number of questions to generate
+    - difficulty: The difficulty level ("easy", "medium", "hard")
+    - file: Main file to analyze
+    - files: List of files to analyze
+    - extra_files_1-5: Additional files to analyze
+    - model_name: Optional Ollama model name to use for generation
+    - system_prompt: Optional custom system prompt to control AI behavior
+    """
+    # Gather all files from different parameters
+    all_files = []
+    
+    # Add main file if provided
+    if file:
+        all_files.append(file)
+        logger.debug(f"Added file from 'file' parameter: {file.filename}")
+    
+    # Add files from the 'files' list if provided
+    if files:
+        for f in files:
+            all_files.append(f)
+            logger.debug(f"Added file from 'files' parameter: {f.filename}")
+    
+    # Add extra files if provided (for multi-file upload support)
+    extra_files = [extra_files_1, extra_files_2, extra_files_3, extra_files_4, extra_files_5]
+    for i, extra_file in enumerate(extra_files):
+        if extra_file:
+            all_files.append(extra_file)
+            logger.debug(f"Added file from 'extra_files_{i+1}' parameter: {extra_file.filename}")
+    
+    # Debug information
+    logger.debug(f"Total files collected for quiz generation: {len(all_files)}")
+    for i, f in enumerate(all_files):
+        logger.debug(f"Quiz file {i+1}: {f.filename}")
+    
+    if len(all_files) < 2:
+        logger.warning("Not enough files provided for multi-document quiz generation")
+        return {"result": "Vui lòng cung cấp ít nhất hai tài liệu để tạo bài trắc nghiệm từ nhiều tài liệu."}
+    
+    try:
+        # Set model if provided
+        if model_name:
+            document_service.set_model(model_name)
+            logger.info(f"Using model {model_name} for quiz generation")
+        
+        # Process files
+        file_contents = []
+        filenames = []
+        document_ids = []
+        
+        for f in all_files:
+            try:
+                # Reset the file position to the beginning before reading
+                await f.seek(0)
+                file_content = await f.read()
+                
+                # Generate content-based document ID
+                content_based_id = generate_content_based_document_id(file_content, f.filename)
+                
+                # Save file to storage system
+                file_id, file_path = Storage.upload_file(file_content, f.filename)
+                
+                # Insert or get existing document record in database
+                document = document_repo.insert_or_get_document(
+                    document_id=content_based_id,
+                    user_id=current_user["id"],
+                    filename=f.filename,
+                    path=file_path,
+                    content_type=f.content_type,
+                    size=len(file_content),
+                    meta={
+                        "original_filename": f.filename,
+                        "content_type": f.content_type,
+                        "content_based_id": True,
+                        "purpose": "quiz_generation"
+                    }
+                )
+                
+                # Add to processing lists
+                file_contents.append(file_content)
+                filenames.append(f.filename)
+                document_ids.append(document["id"])
+                
+                logger.debug(f"Successfully processed file for quiz: {f.filename} ({len(file_content)} bytes), ID: {document['id']}")
+            except Exception as e:
+                logger.error(f"Error processing file {f.filename}: {str(e)}")
+                logger.error(traceback.format_exc())
+                return {"result": f"Error processing file {f.filename}: {str(e)}"}
+        
+        # Generate multi-document quiz
+        logger.info(f"Generating quiz from {len(file_contents)} documents")
+        result = document_service.generate_quiz_multiple(
+            file_contents=file_contents,
+            filenames=filenames,
+            num_questions=num_questions,
+            difficulty=difficulty,
+            system_prompt=system_prompt,
+        )
+        
+        # Create a placeholder document record for the multi-document quiz
+        multi_doc_id = generate_multi_document_id(file_contents, filenames)
+        combined_filenames = ', '.join(filenames)
+        placeholder_document = document_repo.insert_or_get_document(
+            document_id=multi_doc_id,
+            user_id=current_user["id"],
+            filename=f"Quiz: {combined_filenames[:100]}{'...' if len(combined_filenames) > 100 else ''}",
+            path="",  # No physical path for this virtual document
+            content_type="multi/document",
+            size=0,  # No physical size
+            meta={
+                "is_multi_document": True,
+                "document_ids": document_ids,
+                "document_names": filenames,
+                "content_based_id": True,
+                "purpose": "quiz_generation",
+                "quiz": {
+                    "num_questions": num_questions,
+                    "difficulty": difficulty
+                }
+            }
+        )
+        
+        # Add document IDs to result for frontend reference
+        result["document_ids"] = document_ids
+        result["multi_document_id"] = placeholder_document["id"]
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error generating multi-document quiz: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {"result": f"Error generating multi-document quiz: {str(e)}"}
 
 @router.get("/current-model")
 async def get_current_model() -> Dict[str, str]:

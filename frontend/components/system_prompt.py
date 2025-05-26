@@ -2,16 +2,16 @@ import streamlit as st
 
 def system_prompt_ui(default_prompt="", key_prefix=""):
     """
-    Reusable system prompt UI component.
+    Component UI system prompt có thể tái sử dụng.
     
     Args:
-        default_prompt: Default system prompt to display
-        key_prefix: Prefix for session state keys to avoid conflicts
+        default_prompt: System prompt mặc định để hiển thị
+        key_prefix: Tiền tố cho session state keys để tránh xung đột
     
     Returns:
-        The current system prompt value
+        Giá trị system prompt hiện tại
     """
-    # Initialize session state for this component instance
+    # Khởi tạo session state cho instance component này
     session_key = f"{key_prefix}_system_prompt"
     if session_key not in st.session_state:
         st.session_state[session_key] = default_prompt
@@ -19,11 +19,11 @@ def system_prompt_ui(default_prompt="", key_prefix=""):
     st.markdown("""
         <div>
             <h3 style='color: var(--text-secondary); margin-top: 0;'>
-                Customize AI Behavior
+                Tùy Chỉnh Hành Vi AI
             </h3>
             <p>
-                The system prompt provides instructions to the AI about how to process your request.
-                You can customize it to control the style, tone, and content of responses.
+                System prompt cung cấp hướng dẫn cho AI về cách xử lý yêu cầu của bạn.
+                Bạn có thể tùy chỉnh nó để kiểm soát phong cách, giọng điệu và nội dung phản hồi.
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -32,64 +32,64 @@ def system_prompt_ui(default_prompt="", key_prefix=""):
         "System Prompt",
         value=st.session_state[session_key],
         height=100,
-        help="Instructions for the AI",
-        placeholder="Enter instructions for the AI...",
+        help="Hướng dẫn cho AI",
+        placeholder="Nhập hướng dẫn cho AI...",
         key=f"{key_prefix}_prompt_textarea"
     )
     
-    # Store in session state
+    # Lưu trữ trong session state
     st.session_state[session_key] = system_prompt
     
-    # Examples section with different examples based on the prefix
-    st.markdown("### Example System Prompts")
+    # Phần ví dụ với các ví dụ khác nhau dựa trên prefix
+    st.markdown("### Ví Dụ System Prompt")
     
     col1, col2 = st.columns(2)
     
     if "doc" in key_prefix:
-        # Document analysis examples
+        # Ví dụ phân tích tài liệu
         with col1:
-            if st.button("Technical Analysis", key=f"{key_prefix}_tech"):
-                example_prompt = """Focus on technical aspects and terminology. Provide detailed analysis 
-with accurate technical terms. Use a formal tone and structure information hierarchically."""
+            if st.button("Phân Tích Kỹ Thuật", key=f"{key_prefix}_tech"):
+                example_prompt = """Tập trung vào các khía cạnh kỹ thuật và thuật ngữ. Cung cấp phân tích chi tiết 
+với các thuật ngữ kỹ thuật chính xác. Sử dụng giọng điệu trang trọng và cấu trúc thông tin theo thứ bậc."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
         
         with col2:
-            if st.button("Educational Analysis", key=f"{key_prefix}_edu"):
-                example_prompt = """Analyze in an educational context. Simplify complex concepts 
-and explain them in an accessible way. Focus on learning outcomes."""
+            if st.button("Phân Tích Giáo Dục", key=f"{key_prefix}_edu"):
+                example_prompt = """Phân tích trong bối cảnh giáo dục. Đơn giản hóa các khái niệm phức tạp 
+và giải thích chúng theo cách dễ tiếp cận. Tập trung vào kết quả học tập."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
     
     elif "quiz" in key_prefix:
-        # Quiz examples
+        # Ví dụ quiz
         with col1:
-            if st.button("Factual Questions", key=f"{key_prefix}_fact"):
-                example_prompt = """Create questions that test factual recall and basic understanding.
-Focus on clear, unambiguous questions with specific correct answers."""
+            if st.button("Câu Hỏi Thực Tế", key=f"{key_prefix}_fact"):
+                example_prompt = """Tạo câu hỏi kiểm tra khả năng nhớ thực tế và hiểu biết cơ bản.
+Tập trung vào câu hỏi rõ ràng, không mơ hồ với câu trả lời đúng cụ thể."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
         
         with col2:
-            if st.button("Analytical Questions", key=f"{key_prefix}_analyt"):
-                example_prompt = """Create questions that require critical thinking and analysis.
-Include questions that test application of concepts and understanding of relationships."""
+            if st.button("Câu Hỏi Phân Tích", key=f"{key_prefix}_analyt"):
+                example_prompt = """Tạo câu hỏi yêu cầu tư duy phản biện và phân tích.
+Bao gồm câu hỏi kiểm tra việc áp dụng khái niệm và hiểu biết về mối quan hệ."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
     
     else:
-        # General examples for other contexts
+        # Ví dụ chung cho các bối cảnh khác
         with col1:
-            if st.button("Concise Responses", key=f"{key_prefix}_concise"):
-                example_prompt = """Provide concise, direct responses without unnecessary details.
-Focus on key points only and use simple language."""
+            if st.button("Phản Hồi Ngắn Gọn", key=f"{key_prefix}_concise"):
+                example_prompt = """Cung cấp phản hồi ngắn gọn, trực tiếp mà không có chi tiết không cần thiết.
+Chỉ tập trung vào các điểm chính và sử dụng ngôn ngữ đơn giản."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
         
         with col2:
-            if st.button("Detailed Responses", key=f"{key_prefix}_detailed"):
-                example_prompt = """Provide detailed, comprehensive responses with examples.
-Explain concepts thoroughly and consider multiple perspectives."""
+            if st.button("Phản Hồi Chi Tiết", key=f"{key_prefix}_detailed"):
+                example_prompt = """Cung cấp phản hồi chi tiết, toàn diện với các ví dụ.
+Giải thích khái niệm một cách kỹ lưỡng và xem xét nhiều góc độ."""
                 st.session_state[session_key] = example_prompt
                 st.experimental_rerun()
 

@@ -152,9 +152,9 @@ def load_chat_history():
     # CRITICAL: Check if we have an old hash-based document ID
     if is_old_hash_format(document_id):
         st.error(f"🚨 Old hash-based document ID detected: {document_id}")
-        st.error("This document was processed with the old system. Please:")
-        st.error("1. Click 'Clear Session State' button in the sidebar")
-        st.error("2. Upload a NEW document for analysis")
+        st.error("This document was processed with the old system. Please:")        
+        st.error("1. Refresh the page and upload a new document")
+        st.error("2. If the issue persists, restart the application")
         st.error("3. The new document will get a proper UUID format ID")
         st.session_state.chat_history = []
         st.session_state.chat_history_last_loaded = time.time()
@@ -295,42 +295,7 @@ def display_analysis_results(result, query_type, start_time):
     # Display debug information if enabled
     if st.session_state.debug_mode and "debug" in result:
         st.expander("Debug Information").write(result["debug"])
-    
-    # Add a standalone chat interface if this is a document that has been analyzed
-    if st.session_state.document_id and query_type == "qa":
-        st.markdown("""
-            <div class="card fade-in" style='margin-top: 2rem;'>
-                <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                    💬 Ask More Questions
-                </h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Get the process_question callback function
-        def process_follow_up_question(question: str) -> str:
-            """Send the follow-up question to the API and return the response"""
-            try:
-                response = requests.post(
-                    f"{API_BASE_URL}/api/documents/{st.session_state.document_id}/qa",
-                    json={"query": question}
-                )
-                response.raise_for_status()
-                result = response.json()
-                
-                if "answer" in result:
-                    return result["answer"]
-                return str(result)
-            except Exception as e:
-                return f"Error processing question: {str(e)}"
-        
-        # Import and call the chat_interface function
-        from frontend.components.conversation_simple import chat_interface
-        
-        # Display the chat interface
-        chat_interface(
-            document_id=st.session_state.document_id,
-            on_submit_callback=process_follow_up_question
-        )
+      # Chat interface removed - users can access chat history via the Chat History tab
 
 def refresh_page():
     """Refresh the page using the appropriate Streamlit method based on version compatibility."""
@@ -371,41 +336,7 @@ with st.sidebar:
                 📤 Upload Document
             </h2>
         </div>
-    """, unsafe_allow_html=True)    # Add session state reset button for debugging
-    if st.session_state.debug_mode:
-        st.markdown("---")
-        
-        # Show current document ID for debugging
-        current_doc_id = st.session_state.get('document_id', 'None')
-        if current_doc_id and current_doc_id != 'None':
-            # Check if it's UUID format vs hash format
-            import re
-            is_uuid = bool(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', current_doc_id))
-            is_hash = bool(re.match(r'^[a-f0-9]{32}$', current_doc_id))
-            
-            if is_uuid:
-                st.info(f"🆔 Current Document ID: `{current_doc_id}` ✅ (UUID format)")
-            elif is_hash:
-                st.warning(f"🆔 Current Document ID: `{current_doc_id}` ⚠️ (Old hash format)")
-            else:
-                st.error(f"🆔 Current Document ID: `{current_doc_id}` ❌ (Unknown format)")
-        else:
-            st.info("🆔 No document currently loaded")
-        if st.button("🧹 Clear Session State", help="Clear cached document IDs and force fresh analysis"):
-            # Clear all document-related session state
-            keys_to_clear = ['document_id', 'chat_history', 'chat_history_last_loaded', 'in_memory_chat_history']
-            cleared_keys = []
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-                    cleared_keys.append(key)
-            
-            if cleared_keys:
-                st.success(f"✅ Session state cleared! Removed: {', '.join(cleared_keys)}")
-                st.info("🔄 Upload a document for fresh analysis with new UUID format ID.")
-            else:
-                st.info("ℹ️ Session state was already clean.")
-            refresh_page()
+    """, unsafe_allow_html=True)    # Debug section removed for cleaner UI
     
     files = st.file_uploader("Select PDF file", type=["pdf"], accept_multiple_files=True)
     if files:

@@ -7,6 +7,7 @@ from backend.api.document_routes import router as document_router
 from backend.api.slide_routes import router as slide_router
 from backend.api.simple_model_routes import router as model_router
 from backend.api.cleanup_routes import router as cleanup_router
+from backend.api.health_routes import router as health_router
 from backend.model_management.system_prompt_manager import system_prompt_manager
 
 # Configure logging
@@ -32,12 +33,14 @@ app.include_router(document_router, prefix="/api/documents", tags=["Documents"])
 app.include_router(slide_router, prefix="/api/slides", tags=["Slides"])
 app.include_router(model_router, prefix="/api/ollama", tags=["Ollama Models"])
 app.include_router(cleanup_router, prefix="/api/cleanup", tags=["Storage Cleanup"])
+app.include_router(health_router, prefix="/api", tags=["Health Checks"])
 
 # Setup background cleaning tasks (runs on server startup)
 @app.on_event("startup")
 async def startup_event():
     try:
         from utils.cleanup import setup_cleaning_tasks
+        from utils.database import start_auto_vacuum
         
         logger.info("Setting up background cleaning tasks...")
         # Add environment variable configuration here if needed
@@ -47,6 +50,11 @@ async def startup_event():
             upload_retention_hours=24    # Default is 24 hours
         )
         logger.info("Background cleaning tasks setup complete")
+        
+        # Start auto vacuum scheduler
+        logger.info("Starting automatic daily database vacuum...")
+        start_auto_vacuum()
+        logger.info("Auto vacuum scheduler started")
         
         # Ensure the system prompt is set correctly on startup
         vietnamese_prompt = "\\no_think must answer in vietnamese, phải trả lời bằng tiếng việt"
