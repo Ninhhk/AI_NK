@@ -15,7 +15,7 @@ from frontend.components.conversation_simple import add_chat_message, initialize
 
 # Set page config for better appearance
 st.set_page_config(
-    page_title="AI Document Analysis",
+    page_title="Phân Tích Tài Liệu AI",
     page_icon="📄",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -30,13 +30,13 @@ with open('frontend/style.css') as f:
 
 # Function to get the current model
 def get_current_model():
-    """Get the currently active model from the API"""
+    """Lấy model đang hoạt động hiện tại từ API"""
     try:
         response = requests.get(f"{API_BASE_URL}/api/slides/current-model")
         response.raise_for_status()
         return response.json()["model_name"]
     except Exception as e:
-        st.error(f"Error fetching current model: {e}")
+        st.error(f"Lỗi khi lấy thông tin model hiện tại: {e}")
         return None
 
 def analyze_document(
@@ -46,7 +46,7 @@ def analyze_document(
     model_name: Optional[str] = None,
     system_prompt: Optional[str] = None,
 ) -> dict:
-    """Send document(s) to backend for analysis."""
+    """Gửi tài liệu lên backend để phân tích."""
     # Prepare files for multi-file upload
     files_dict = {}
     
@@ -333,33 +333,32 @@ with st.sidebar:
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                📤 Upload Document
+                📤 Tải Lên Tài Liệu
             </h2>
         </div>
     """, unsafe_allow_html=True)    # Debug section removed for cleaner UI
     
-    files = st.file_uploader("Select PDF file", type=["pdf"], accept_multiple_files=True)
+    files = st.file_uploader("Chọn file PDF", type=["pdf"], accept_multiple_files=True)
     if files:
         st.markdown("""
             <div style='background-color: var(--success-color); color: white; padding: 0.5rem; border-radius: 5px; margin-top: 0.5em;'>
-                ✅ Document uploaded successfully
+                ✅ Tài liệu đã được tải lên thành công
             </div>
         """, unsafe_allow_html=True)
-    
-    # Display current model information
+      # Display current model information
     current_model = get_current_model()
     if current_model:
-        st.info(f"🤖 Using model: **{current_model}**. You can change the model in the Model Management page.", icon="ℹ️")
+        st.info(f"🤖 Đang sử dụng model: **{current_model}**. Bạn có thể thay đổi model trong trang Quản Lý Model.", icon="ℹ️")
     
     st.markdown("""
         <div class="card fade-in">
             <h2 style='color: var(--primary-color); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                🔍 Analysis Type
+                🔍 Loại Phân Tích
             </h2>
         </div>
     """, unsafe_allow_html=True)
     
-    query_type = st.radio("Select function", ["summary", "qa"])
+    query_type = st.radio("Chọn chức năng", ["summary", "qa"])
     
     st.markdown("""
         <div class="card fade-in">
@@ -379,20 +378,19 @@ with st.sidebar:
         
     # Show the system prompt UI component
     system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="doc_analysis")
-    
-    # Add a button to save the system prompt globally
-    if st.button("💾 Save System Prompt Globally"):
+      # Add a button to save the system prompt globally
+    if st.button("💾 Lưu System Prompt Toàn Cục"):
         result = set_system_prompt(system_prompt)
         if result:
-            st.success("✅ System prompt saved globally")
+            st.success("✅ System prompt đã được lưu toàn cục")
         else:
-            st.error("❌ Failed to save system prompt")
+            st.error("❌ Không thể lưu system prompt")
     
     # Add a divider at the bottom
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("**App Info**")
-    st.markdown("Version: 1.0.0")
-    st.markdown("© 2025 AI Document Analysis")
+    st.markdown("**Thông Tin Ứng Dụng**")
+    st.markdown("Phiên bản: 1.0.0")
+    st.markdown("© 2025 Phân Tích Tài Liệu AI")
 
 # Header section with animated logo and title
 col1, col2, col3 = st.columns([1,2,1])
@@ -400,10 +398,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                📄 Document Analysis
+                📄 Phân Tích Tài Liệu
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Efficient Information Processing with AI
+                Xử Lý Thông Tin Hiệu Quả Với AI
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -414,41 +412,39 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Main content area tabs - QA section and Chat History
-tab1, tab2 = st.tabs(["📝 Document Analysis", "💬 Chat History"])
+tab1, tab2 = st.tabs(["📝 Phân Tích Tài Liệu", "💬 Lịch Sử Trò Chuyện"])
 
 with tab1:
-    # Show a clean question area when document is uploaded
-    if files:
+    # Show a clean question area when document is uploaded    if files:
         if query_type == "qa":
             st.markdown("""
                 <div class="card fade-in">
                     <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                        ❓ Your Question
+                        ❓ Câu Hỏi Của Bạn
                     </h3>
                 </div>
             """, unsafe_allow_html=True)
             
             user_query = st.text_area(
                 "",
-                value="What data is used in this analysis?",
-                help="Enter a specific question to get an accurate answer",
+                value="Dữ liệu nào được sử dụng trong phân tích này?",
+                help="Nhập câu hỏi cụ thể để nhận được câu trả lời chính xác",
                 height=100
             )
             
             # Make the analyze button more prominent
-            if st.button("🚀 Analyze Document", type="primary", use_container_width=True):
+            if st.button("🚀 Phân Tích Tài Liệu", type="primary", use_container_width=True):
                 result = None
                 start = time.time()
-                with st.status("🔄 Analyzing document...", expanded=True) as status:
+                with st.status("🔄 Đang phân tích tài liệu...", expanded=True) as status:
                     try:
                         model_name = get_current_model()
                         result = analyze_document(
                             files=files,
-                            query_type=query_type,
-                            user_query=user_query if query_type == "qa" else None,
+                            query_type=query_type,                            user_query=user_query if query_type == "qa" else None,
                             model_name=model_name,
                             system_prompt=system_prompt                        )
-                        status.update(label="✅ Completed!", state="complete", expanded=False)
+                        status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
                         
                         # CRITICAL FIX: Clear any existing document ID first to avoid using cached old hash-based IDs
                         st.session_state.document_id = None
@@ -510,8 +506,7 @@ with tab1:
                         status.update(label="❌ Error", state="error", expanded=False)
                         st.error(f"⚠️ An error occurred: {e}")
                         result = None
-                
-                # Display results if available in QA mode
+                  # Display results if available in QA mode
                 if result:
                     # Call the common results display function
                     display_analysis_results(result, query_type, start)
@@ -520,7 +515,7 @@ with tab1:
             st.markdown("""
                 <div class="card fade-in">
                     <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-                        📝 Generate Document Summary
+                        📝 Tạo Tóm Tắt Tài Liệu
                     </h3>
                 </div>
             """, unsafe_allow_html=True)
@@ -529,7 +524,7 @@ with tab1:
             result = None
             
             # Make the analyze button more prominent
-            if st.button("🚀 Generate Summary", type="primary", use_container_width=True):
+            if st.button("🚀 Tạo Tóm Tắt", type="primary", use_container_width=True):
                 start = time.time()
                 with st.status("🔄 Generating summary...", expanded=True) as status:
                     try:

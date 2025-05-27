@@ -13,7 +13,7 @@ from frontend.components.system_prompt import system_prompt_ui
 
 # Set page config for better appearance
 st.set_page_config(
-    page_title="AI Slide Generator",
+    page_title="Tạo Slide AI",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -70,7 +70,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def generate_slides(topic: str, num_slides: int, model_name: str = None, document_files=None, system_prompt: str = None) -> dict:
-    """Send content to backend for slide generation with multiple documents."""
+    """Gửi nội dung lên backend để tạo slide với nhiều tài liệu."""
     # Prepare files list for multi-file upload under 'documents'
     files = []
     if document_files:
@@ -101,7 +101,7 @@ def generate_slides(topic: str, num_slides: int, model_name: str = None, documen
     return response.json()
 
 def get_available_models() -> list:
-    """Get list of available models from backend."""
+    """Lấy danh sách các model có sẵn từ backend."""
     try:
         response = requests.get("http://localhost:8000/api/ollama/models")
         response.raise_for_status()
@@ -111,7 +111,7 @@ def get_available_models() -> list:
         return []
     
 def get_current_model() -> str:
-    """Get current model being used for slide generation."""
+    """Lấy model hiện tại được sử dụng để tạo slide."""
     try:
         response = requests.get("http://localhost:8000/api/slides/current-model")
         response.raise_for_status()
@@ -121,7 +121,7 @@ def get_current_model() -> str:
         return ""
 
 def get_system_prompt() -> str:
-    """Get current system prompt for slide generation."""
+    """Lấy system prompt hiện tại cho tạo slide."""
     try:
         response = requests.get("http://localhost:8000/api/slides/system-prompt")
         response.raise_for_status()
@@ -131,7 +131,7 @@ def get_system_prompt() -> str:
         return ""
 
 def set_system_prompt(prompt: str) -> bool:
-    """Set system prompt for slide generation."""
+    """Đặt system prompt cho tạo slide."""
     try:
         response = requests.post(
             "http://localhost:8000/api/slides/system-prompt",
@@ -149,10 +149,10 @@ with col2:
     st.markdown("""
         <div class="fade-in">
             <h1 style='text-align: center; color: var(--primary-color); font-size: 2.5em; margin-bottom: 0.5em;'>
-                🎯 Create Slides
+                🎯 Tạo Slide
             </h1>
             <h3 style='text-align: center; color: var(--text-secondary); font-size: 1.2em;'>
-                Create Professional Presentations With AI
+                Tạo Bài Thuyết Trình Chuyên Nghiệp Với AI
             </h3>
         </div>
     """, unsafe_allow_html=True)
@@ -167,27 +167,26 @@ available_models = get_available_models()
 current_model = get_current_model()
 
 # Model selection
-with st.expander("🤖 AI Model Selection", expanded=False):
+with st.expander("🤖 Lựa Chọn Model AI", expanded=False):
     st.markdown("""
-        Select which AI model to use for all application features including slide generation, document analysis, and quiz generation.
-        Any changes made here will apply to the entire application.
-        You can manage models in the Model Management page.
+        Chọn model AI nào để sử dụng cho tất cả các tính năng của ứng dụng bao gồm tạo slide, phân tích tài liệu và tạo quiz.
+        Mọi thay đổi tại đây sẽ áp dụng cho toàn bộ ứng dụng.
+        Bạn có thể quản lý các model trong trang Quản Lý Model.
     """)
     
     # Create a list of model names for the dropdown
     model_names = [model.get('name') for model in available_models]
-    
-    # Only show dropdown if there are models available
+      # Only show dropdown if there are models available
     if model_names:
         selected_model = st.selectbox(
-            "Select Global AI Model",
+            "Chọn Model AI Toàn Cục",
             options=model_names,
             index=model_names.index(current_model) if current_model in model_names else 0,
-            help="Choose which AI model to use for all features (will be applied globally)"
+            help="Chọn model AI để sử dụng cho tất cả tính năng (sẽ được áp dụng toàn cục)"
         )
-        st.info(f"Using model: {selected_model} for all features including document analysis and quiz generation")
+        st.info(f"Đang sử dụng model: {selected_model} cho tất cả tính năng bao gồm phân tích tài liệu và tạo quiz")
     else:
-        st.warning("No models available. Please visit the Model Management page to add models.")
+        st.warning("Không có model nào khả dụng. Vui lòng truy cập trang Quản Lý Model để thêm model.")
         selected_model = None
 
 # Input section with better layout
@@ -195,116 +194,114 @@ col1, col2 = st.columns([2,1])
 
 with col1:
     topic = st.text_input(
-        "📝 Your Topic",
-        placeholder="Enter the topic you want to create slides for...",
-        help="Enter a clear topic for the AI to generate appropriate slides"
+        "📝 Chủ Đề Của Bạn",
+        placeholder="Nhập chủ đề bạn muốn tạo slide...",
+        help="Nhập chủ đề rõ ràng để AI tạo slide phù hợp"
     )
 
 with col2:
     num_slides = st.number_input(
-        "📊 Number of Slides",
+        "📊 Số Lượng Slide",
         min_value=1,
         max_value=20,
         value=5,
-        help="Choose the number of slides you want to create (maximum 20 slides)"
+        help="Chọn số lượng slide bạn muốn tạo (tối đa 20 slide)"
     )
 
 # System prompt section
-with st.expander("💬 System Prompt Settings", expanded=False):
+with st.expander("💬 Cài Đặt System Prompt", expanded=False):
     # Get current system prompt
     current_system_prompt = get_system_prompt()
     
     # Add tabs for different sections
-    prompt_tab, examples_tab, help_tab = st.tabs(["Edit Prompt", "Example Prompts", "Help"])
+    prompt_tab, examples_tab, help_tab = st.tabs(["Chỉnh Sửa Prompt", "Prompt Mẫu", "Trợ Giúp"])
     with prompt_tab:
         # Use the reusable system prompt UI component
         custom_system_prompt = system_prompt_ui(default_prompt=current_system_prompt, key_prefix="slide_gen")
-        
-        # Save button for system prompt
-        if st.button("💾 Save System Prompt"):
+          # Save button for system prompt
+        if st.button("💾 Lưu System Prompt"):
             if set_system_prompt(custom_system_prompt):
-                st.success("✅ System prompt saved successfully!")
+                st.success("✅ System prompt đã được lưu thành công!")
             else:
-                st.error("❌ Failed to save system prompt. Please try again.")
+                st.error("❌ Không thể lưu system prompt. Vui lòng thử lại.")
                   # Use in current session only
         if 'use_custom_prompt' not in st.session_state:
             st.session_state['use_custom_prompt'] = False
             
         st.session_state['use_custom_prompt'] = st.checkbox(
-            "Use custom prompt for this session only (without saving)",
+            "Sử dụng prompt tùy chỉnh chỉ cho phiên này (không lưu)",
             value=st.session_state['use_custom_prompt'],
             key="slide_gen_use_custom_prompt",
-            help="Apply a custom prompt for just this session without saving it as the default"
+            help="Áp dụng prompt tùy chỉnh chỉ cho phiên này mà không lưu làm mặc định"
         )
-    
     with examples_tab:
-        st.markdown("### Example System Prompts")
-        st.markdown("Click on any example to use it:")
+        st.markdown("### Prompt Mẫu")
+        st.markdown("Nhấp vào bất kỳ ví dụ nào để sử dụng nó:")
         
         # Technical presentation example
-        if st.button("Technical Presentation"):
-            example_prompt = """You are a technical presentation expert. Create slides with precise, technically accurate content. 
-Use formal language, include relevant technical terminology, and organize complex information 
-hierarchically. Each slide should focus on a single technical concept with supporting details.
-Limit each slide to 5 bullet points maximum, each with 7-10 words."""
+        if st.button("Bài Thuyết Trình Kỹ Thuật"):
+            example_prompt = """Bạn là chuyên gia thuyết trình kỹ thuật. Tạo slide với nội dung chính xác, kỹ thuật. 
+Sử dụng ngôn ngữ trang trọng, bao gồm thuật ngữ kỹ thuật phù hợp, và tổ chức thông tin phức tạp 
+theo thứ bậc. Mỗi slide nên tập trung vào một khái niệm kỹ thuật duy nhất với chi tiết hỗ trợ.
+Giới hạn mỗi slide tối đa 5 điểm chính, mỗi điểm có 7-10 từ."""
             st.session_state['custom_system_prompt'] = example_prompt
             st.experimental_rerun()
         
         # Educational presentation example
-        if st.button("Educational Presentation"):
-            example_prompt = """You are an education specialist creating slides for students. Present information in a 
-clear, engaging way with simple explanations of complex concepts. Include thought-provoking 
-questions on some slides, and organize content in a logical learning progression from 
-basic to advanced concepts. Use friendly, accessible language."""
+        if st.button("Bài Thuyết Trình Giáo Dục"):
+            example_prompt = """Bạn là chuyên gia giáo dục tạo slide cho học sinh. Trình bày thông tin một cách 
+rõ ràng, hấp dẫn với lời giải thích đơn giản về các khái niệm phức tạp. Bao gồm câu hỏi 
+gợi suy nghĩ trong một số slide, và tổ chức nội dung theo trình tự học tập logic từ 
+cơ bản đến nâng cao. Sử dụng ngôn ngữ thân thiện, dễ tiếp cận."""
             st.session_state['custom_system_prompt'] = example_prompt
             st.experimental_rerun()
         
         # Business presentation example
-        if st.button("Business Presentation"):
-            example_prompt = """You are a business presentation expert focusing on persuasive, action-oriented slides.
-Create content that highlights key business metrics, strategic insights, and clear 
-recommendations. Use professional language, emphasize benefits and impacts, and 
-ensure each slide contributes to a compelling business narrative. Include a clear 
-call to action in the conclusion."""
+        if st.button("Bài Thuyết Trình Kinh Doanh"):
+            example_prompt = """Bạn là chuyên gia thuyết trình kinh doanh tập trung vào slide thuyết phục, hướng hành động.
+Tạo nội dung làm nổi bật các chỉ số kinh doanh chính, thông tin chiến lược, và 
+khuyến nghị rõ ràng. Sử dụng ngôn ngữ chuyên nghiệp, nhấn mạnh lợi ích và tác động, và 
+đảm bảo mỗi slide đóng góp vào câu chuyện kinh doanh thuyết phục. Bao gồm lời kêu gọi 
+hành động rõ ràng trong kết luận."""
             st.session_state['custom_system_prompt'] = example_prompt
             st.experimental_rerun()
     
     with help_tab:
-        st.markdown("### Tips for Writing Effective System Prompts")
+        st.markdown("### Mẹo Viết System Prompt Hiệu Quả")
         st.markdown("""
-        1. **Be specific about format**: Mention how many bullet points per slide or words per bullet point
-        2. **Define the audience**: Specify who the presentation is for
-        3. **Set the tone**: Indicate if you want formal, casual, technical, or simplified language
-        4. **Provide structure guidance**: Suggest how information should be organized
-        5. **Include domain expertise**: Add specific rules relevant to your topic
+        1. **Cụ thể về định dạng**: Đề cập số điểm chính mỗi slide hoặc số từ mỗi điểm
+        2. **Xác định đối tượng**: Nêu rõ bài thuyết trình dành cho ai
+        3. **Đặt giọng điệu**: Chỉ ra bạn muốn ngôn ngữ trang trọng, thân thiện, kỹ thuật, hay đơn giản
+        4. **Hướng dẫn cấu trúc**: Gợi ý cách tổ chức thông tin
+        5. **Bao gồm chuyên môn**: Thêm quy tắc cụ thể phù hợp với chủ đề của bạn
         
-        For more detailed guidance, see the [System Prompt Guide](https://github.com/your-username/AI_NVCB/blob/main/docs/system_prompt_guide.md).
+        Để được hướng dẫn chi tiết hơn, xem [Hướng Dẫn System Prompt](https://github.com/your-username/AI_NVCB/blob/main/docs/system_prompt_guide.md).
         """)
 
 # Reference document upload section supporting multiple files
 st.markdown("""
     <div class="card fade-in">
         <h3 style='color: var(--text-secondary); margin-top: 0; display: flex; align-items: center; gap: 0.5em;'>
-            📄 Reference Documents (optional)
+            📄 Tài Liệu Tham Khảo (tùy chọn)
         </h3>
     </div>
 """, unsafe_allow_html=True)
 document_files = st.file_uploader(
-    "Upload one or more documents for AI reference",
+    "Tải lên một hoặc nhiều tài liệu để AI tham khảo",
     type=["pdf", "docx", "txt"],
     accept_multiple_files=True,
-    help="Upload documents for AI to reference when creating slides. Supports PDF, DOCX, and TXT"
+    help="Tải lên tài liệu để AI tham khảo khi tạo slide. Hỗ trợ PDF, DOCX và TXT"
 )
 if document_files:
     for doc in document_files:
-        st.success(f"Uploaded: {doc.name}")
+        st.success(f"Đã tải lên: {doc.name}")
 
 # Generate button with custom styling
-if st.button("🚀 Create Slides", type="primary"):
+if st.button("🚀 Tạo Slide", type="primary"):
     if not topic:
-        st.error("⚠️ Please enter a topic first.")
+        st.error("⚠️ Vui lòng nhập chủ đề trước.")
     else:
-        with st.status("🔄 Creating slides...", expanded=True) as status:
+        with st.status("🔄 Đang tạo slide...", expanded=True) as status:
             try:
                 start_time = time.time()
                 # Include selected model in the generation request
@@ -335,9 +332,8 @@ if st.button("🚀 Create Slides", type="primary"):
                         file_found = True
                         break
                     time.sleep(0.5)  # Wait 0.5 seconds between checks
-                
                 if file_found:
-                    status.update(label="✅ Completed!", state="complete", expanded=False)
+                    status.update(label="✅ Hoàn thành!", state="complete", expanded=False)
                     
                     # Show download button with better styling
                     st.markdown("""
@@ -348,7 +344,7 @@ if st.button("🚀 Create Slides", type="primary"):
                         file_data = f.read()
                         
                     st.download_button(
-                        label="📥 Download PowerPoint",
+                        label="📥 Tải Xuống PowerPoint",
                         data=file_data,
                         file_name=filename,
                         mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -360,22 +356,22 @@ if st.button("🚀 Create Slides", type="primary"):
                     st.markdown(f"""
                         <div class="card fade-in" style='margin-top: 1rem;'>
                             <p style='margin: 0; color: var(--text-primary);'>
-                                <strong>⏱️ Execution Time:</strong> {time.time() - start_time:.2f} seconds
+                                <strong>⏱️ Thời Gian Thực Hiện:</strong> {time.time() - start_time:.2f} giây
                             </p>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
-                    status.update(label="⚠️ Slides created but the filename might be too long to display, find the file in /output/slides", state="error", expanded=False)
-                    st.error(f"⚠️ Unable to find file {filename} due to a long filename. Please find the file in /output/slides.")
+                    status.update(label="⚠️ Slide đã được tạo nhưng tên file có thể quá dài để hiển thị, tìm file trong /output/slides", state="error", expanded=False)
+                    st.error(f"⚠️ Không thể tìm thấy file {filename} do tên file quá dài. Vui lòng tìm file trong /output/slides.")
                 
             except Exception as e:
-                status.update(label="❌ Error", state="error", expanded=False)
-                st.error(f"⚠️ An error occurred: {e}")
+                status.update(label="❌ Lỗi", state="error", expanded=False)
+                st.error(f"⚠️ Đã xảy ra lỗi: {e}")
 
 # Footer with gradient separator
 st.markdown("""
     <div style='height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent);'></div>
     <div class="footer fade-in">
-        <p style='margin: 0.5em 0;'>Powered by AI Technology | Made with ❤️</p>
+        <p style='margin: 0.5em 0;'>Được Hỗ Trợ Bởi Công Nghệ AI | Được Tạo Với ❤️</p>
     </div>
 """, unsafe_allow_html=True)
