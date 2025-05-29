@@ -300,7 +300,7 @@ with tab2:
                 if success:
                     st.success(f"Model đã được tải lên thành công")
                     time.sleep(1)
-                    st.experimental_rerun()
+                   st.rerun()
 
 with tab3:
     st.markdown("### System Prompt Toàn Cục")
@@ -348,7 +348,7 @@ with tab3:
             if result:
                 st.success("✅ System prompt đã được đặt lại thành yêu cầu phản hồi tiếng Việt")
                 time.sleep(1)
-                st.experimental_rerun()
+               st.rerun()
             else:
                 st.error("❌ Không thể đặt lại system prompt")
         except Exception as e:
@@ -388,12 +388,12 @@ with tab4:
                         if cancel_model_pull(model_name):
                             st.success(f"Đã hủy tải xuống {model_name}")
                             time.sleep(1)
-                            st.experimental_rerun()
+                           st.rerun()
     
     # Logic tự động làm mới
     if auto_refresh and download_progress:
         time.sleep(2)
-        st.experimental_rerun()
+       st.rerun()
 
 # Footer with gradient separator
 st.markdown("""

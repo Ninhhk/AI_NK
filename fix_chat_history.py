@@ -294,7 +294,7 @@ def chat_interface(document_id: str, on_submit_callback) -> None:
                 add_chat_message(document_id, user_query, response)
                 
                 # Force refresh to show new message
-                st.experimental_rerun()
+               st.rerun()
 '''
     
     # Content for document_analysis.py
@@ -407,7 +407,7 @@ def document_analysis_page():
     if st.button("Clear Chat History"):
         st.session_state[f"chat_history_{document_id}"] = []
         st.success("Chat history cleared!")
-        st.experimental_rerun()
+       st.rerun()
 
 # Launch the page
 if __name__ == "__main__":

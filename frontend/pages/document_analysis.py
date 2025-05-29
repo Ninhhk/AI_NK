@@ -311,7 +311,7 @@ def refresh_page():
             st.rerun()
         else:
             # For older versions
-            st.experimental_rerun()
+           st.rerun()
     except Exception as e:
         # Fallback message if both methods fail
         st.warning(f"Unable to refresh page automatically. Please refresh the page manually. (Error: {e})")

@@ -27,7 +27,7 @@ def create_sidebar():
         
         if debug_enabled != st.session_state.debug_mode:
             st.session_state.debug_mode = debug_enabled
-            st.experimental_rerun()
+           st.rerun()
         
         # Hiển thị API URL (chỉ trong chế độ debug)
         if st.session_state.debug_mode:
