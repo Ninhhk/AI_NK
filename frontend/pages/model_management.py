@@ -202,10 +202,9 @@ tab1, tab2, tab3, tab4 = st.tabs(["Models Có Sẵn", "Thêm Model Mới", "Syst
 with tab1:
     # Lấy model hiện tại
     current_model = get_current_model()
-    
-    # Nút làm mới
+      # Nút làm mới
     if st.button("🔄 Làm Mới Models", type="primary"):
-        st.experimental_rerun()
+        st.rerun()
     
     # Lấy models
     models = get_models()
@@ -238,19 +237,17 @@ with tab1:
                 
                 # Các nút hành động trong cột
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
-                
                 with col1:
                     if st.button(f"Chọn", key=f"select_{model['name']}"):
                         result = set_model(model['name'])
                         if result:
                             st.success(f"Model đã được thay đổi thành {model['name']} và sẽ được sử dụng cho tất cả tính năng")
                             time.sleep(1)
-                            st.experimental_rerun()
+                            st.rerun()
                 
                 with col2:
                     if st.button(f"Thông tin", key=f"info_{model['name']}"):
                         st.json(model['details'] if 'details' in model else model)
-                
                 with col3:
                     if st.button(f"Xóa", key=f"delete_{model['name']}"):
                         if model['name'] == current_model:
@@ -259,7 +256,7 @@ with tab1:
                             if delete_model(model['name']):
                                 st.success(f"Model {model['name']} đã được xóa")
                                 time.sleep(1)
-                                st.experimental_rerun()
+                                st.rerun()
                 
                 with col4:
                     if model['name'] == current_model:
@@ -280,13 +277,12 @@ with tab2:
         with st.form("pull_model_form"):
             model_name = st.text_input("Tên Model", placeholder="ví dụ: llama3:8b")
             submitted = st.form_submit_button("Bắt Đầu Tải Xuống")
-            
             if submitted and model_name:
                 task_id = pull_model(model_name)
                 if task_id:
                     st.success(f"Đã bắt đầu tải xuống {model_name}")
                     time.sleep(1)
-                    st.experimental_rerun()
+                    st.rerun()
     
     # Phần tải lên model
     with st.expander("Tải Lên File Model GGUF", expanded=False):
