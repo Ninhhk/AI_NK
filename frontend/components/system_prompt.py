@@ -52,14 +52,14 @@ def system_prompt_ui(default_prompt="", key_prefix=""):
                 example_prompt = """Tập trung vào các khía cạnh kỹ thuật và thuật ngữ. Cung cấp phân tích chi tiết 
 với các thuật ngữ kỹ thuật chính xác. Sử dụng giọng điệu trang trọng và cấu trúc thông tin theo thứ bậc."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
         
         with col2:
             if st.button("Phân Tích Giáo Dục", key=f"{key_prefix}_edu"):
                 example_prompt = """Phân tích trong bối cảnh giáo dục. Đơn giản hóa các khái niệm phức tạp 
 và giải thích chúng theo cách dễ tiếp cận. Tập trung vào kết quả học tập."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
     
     elif "quiz" in key_prefix:
         # Ví dụ quiz
@@ -68,14 +68,14 @@ và giải thích chúng theo cách dễ tiếp cận. Tập trung vào kết qu
                 example_prompt = """Tạo câu hỏi kiểm tra khả năng nhớ thực tế và hiểu biết cơ bản.
 Tập trung vào câu hỏi rõ ràng, không mơ hồ với câu trả lời đúng cụ thể."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
         
         with col2:
             if st.button("Câu Hỏi Phân Tích", key=f"{key_prefix}_analyt"):
                 example_prompt = """Tạo câu hỏi yêu cầu tư duy phản biện và phân tích.
 Bao gồm câu hỏi kiểm tra việc áp dụng khái niệm và hiểu biết về mối quan hệ."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
     
     else:
         # Ví dụ chung cho các bối cảnh khác
@@ -84,13 +84,13 @@ Bao gồm câu hỏi kiểm tra việc áp dụng khái niệm và hiểu biết
                 example_prompt = """Cung cấp phản hồi ngắn gọn, trực tiếp mà không có chi tiết không cần thiết.
 Chỉ tập trung vào các điểm chính và sử dụng ngôn ngữ đơn giản."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
         
         with col2:
             if st.button("Phản Hồi Chi Tiết", key=f"{key_prefix}_detailed"):
                 example_prompt = """Cung cấp phản hồi chi tiết, toàn diện với các ví dụ.
 Giải thích khái niệm một cách kỹ lưỡng và xem xét nhiều góc độ."""
                 st.session_state[session_key] = example_prompt
-               st.rerun()
+            st.rerun()
 
     return system_prompt
