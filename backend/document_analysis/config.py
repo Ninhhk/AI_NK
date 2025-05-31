@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 # Ollama Configuration
 OLLAMA_CONFIG = {
-    "model_name": "gemma3:1b",
+    "model_name": "qwen3:8b",
     "base_url": "http://localhost:11434",
     "temperature": 0.1
 }

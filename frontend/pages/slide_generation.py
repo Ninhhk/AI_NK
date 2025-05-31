@@ -237,15 +237,14 @@ with st.expander("💬 Cài Đặt System Prompt", expanded=False):
     with examples_tab:
         st.markdown("### Prompt Mẫu")
         st.markdown("Nhấp vào bất kỳ ví dụ nào để sử dụng nó:")
-        
-        # Technical presentation example
+          # Technical presentation example
         if st.button("Bài Thuyết Trình Kỹ Thuật"):
             example_prompt = """Bạn là chuyên gia thuyết trình kỹ thuật. Tạo slide với nội dung chính xác, kỹ thuật. 
 Sử dụng ngôn ngữ trang trọng, bao gồm thuật ngữ kỹ thuật phù hợp, và tổ chức thông tin phức tạp 
 theo thứ bậc. Mỗi slide nên tập trung vào một khái niệm kỹ thuật duy nhất với chi tiết hỗ trợ.
 Giới hạn mỗi slide tối đa 5 điểm chính, mỗi điểm có 7-10 từ."""
             st.session_state['custom_system_prompt'] = example_prompt
-        st.rerun()
+            st.rerun()
         
         # Educational presentation example
         if st.button("Bài Thuyết Trình Giáo Dục"):
@@ -254,7 +253,7 @@ rõ ràng, hấp dẫn với lời giải thích đơn giản về các khái ni
 gợi suy nghĩ trong một số slide, và tổ chức nội dung theo trình tự học tập logic từ 
 cơ bản đến nâng cao. Sử dụng ngôn ngữ thân thiện, dễ tiếp cận."""
             st.session_state['custom_system_prompt'] = example_prompt
-        st.rerun()
+            st.rerun()
         
         # Business presentation example
         if st.button("Bài Thuyết Trình Kinh Doanh"):
@@ -264,7 +263,7 @@ khuyến nghị rõ ràng. Sử dụng ngôn ngữ chuyên nghiệp, nhấn mạ
 đảm bảo mỗi slide đóng góp vào câu chuyện kinh doanh thuyết phục. Bao gồm lời kêu gọi 
 hành động rõ ràng trong kết luận."""
             st.session_state['custom_system_prompt'] = example_prompt
-        st.rerun()
+            st.rerun()
     
     with help_tab:
         st.markdown("### Mẹo Viết System Prompt Hiệu Quả")

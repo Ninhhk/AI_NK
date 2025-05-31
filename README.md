@@ -120,7 +120,7 @@ poetry run pre-commit install
 ollama serve
 
 # Pull required models
-ollama pull llama3.1:8b
+ollama pull qwen3:8b
 
 # Run the application
 poetry run python run_backend.py
@@ -159,7 +159,7 @@ cp .env.development .env.local
 # Key configurations to update in .env:
 # ENVIRONMENT=development
 # OLLAMA_BASE_URL=http://localhost:11434
-# MODEL_NAME=llama3.1:8b
+# MODEL_NAME=qwen3:8b
 # DATABASE_URL=sqlite:///./ai_nvcb.db
 # SECRET_KEY=generate_a_secure_key_here
 # ADMIN_PASSWORD=secure_admin_password
@@ -300,7 +300,7 @@ FRONTEND_URL=http://localhost:8501        # Frontend URL for backend
 ```env
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434    # Ollama server URL
-MODEL_NAME=llama3.1:8b                    # Default model to use
+MODEL_NAME=qwen3:8b                    # Default model to use
 OLLAMA_TEMPERATURE=0.7                    # Model temperature (0.0-2.0)
 OLLAMA_TOP_P=0.9                          # Top-p sampling (0.0-1.0)
 OLLAMA_TOP_K=40                           # Top-k sampling
@@ -852,7 +852,7 @@ Built with ❤️ using FastAPI, Streamlit, and modern DevOps practices.
 5. Set up environment variables(if there is no .env file):
    Create a `.env` file with:
    ```
-   MODEL_NAME=qwen2.5:7b
+   MODEL_NAME=qwen3:8b
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
@@ -860,7 +860,7 @@ Built with ❤️ using FastAPI, Streamlit, and modern DevOps practices.
 
 1. Start Ollama server and ensure your model is available:
    ```bash
-   ollama run qwen2.5:7b
+   ollama run qwen3:8b
    ```
    Wait for ollama to download the model(~5Gb). You can test prompt or press Ctrl+D to exit.
 
@@ -1010,7 +1010,7 @@ AI_NVCB/
 5. Cài đặt môi trường(nếu không có file .env ):
    Tạo file `.env` với nội dung:
    ```
-   MODEL_NAME=qwen2.5:7b
+   MODEL_NAME=qwen3:8b
    OLLAMA_BASE_URL=http://localhost:11434
    ```
 
@@ -1018,7 +1018,7 @@ AI_NVCB/
 
 1. Khởi động máy chủ Ollama và đảm bảo mô hình của bạn có sẵn:
    ```bash
-   ollama run qwen2.5:7b
+   ollama run qwen3:8b
    ```
    Chờ Ollama tải xuống mô hình (~5Gb). Bạn có thể thử prompt hoặc nhấn Ctrl+D để thoát.
 

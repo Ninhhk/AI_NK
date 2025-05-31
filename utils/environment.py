@@ -120,7 +120,7 @@ def validate_environment(
         ]
     
     if required_models is None and check_ollama:
-        required_models = ["gemma3:1b"]
+        required_models = ["qwen3:8b"]
     
     # Initialize result dictionary
     result = {

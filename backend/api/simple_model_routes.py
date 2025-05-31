@@ -26,7 +26,7 @@ class ModelResponse(BaseModel):
     success: bool
 
 # Current model tracking
-current_model = "gemma3:1b"  # Default model
+current_model = "qwen3:8b"  # Default model
 
 @router.get("/models", response_model=ModelList)
 def get_models():

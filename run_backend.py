@@ -69,7 +69,7 @@ def main():
             # Require Python 3.8+ (adjust based on your needs)
             min_python_version=(3, 8, 0),
             # Check for required models on Ollama
-            required_models=[os.environ.get("MODEL_NAME", "gemma3:1b")],
+            required_models=[os.environ.get("MODEL_NAME", "qwen3:8b")],
         )
         
         # Exit if validation fails, unless using the --continue-on-validation-fail flag

@@ -15,7 +15,7 @@ router = APIRouter()
 
 # Initialize the slide service
 slide_service = SlideGenerationService(
-    model_name=os.getenv("MODEL_NAME", "gemma3:1b"),
+    model_name=os.getenv("MODEL_NAME", "qwen3:8b"),
     base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
 )
 

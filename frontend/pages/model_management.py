@@ -202,7 +202,8 @@ tab1, tab2, tab3, tab4 = st.tabs(["Models Có Sẵn", "Thêm Model Mới", "Syst
 with tab1:
     # Lấy model hiện tại
     current_model = get_current_model()
-      # Nút làm mới
+    
+    # Nút làm mới
     if st.button("🔄 Làm Mới Models", type="primary"):
         st.rerun()
     
@@ -269,13 +270,13 @@ with tab2:
     with st.expander("Tải Model từ Ollama", expanded=True):
         st.markdown("""
         Nhập tên của một model Ollama để tải xuống. Ví dụ:
+        - `qwen3:8b`
         - `llama3:8b`
-        - `gemma3:1b`
         - `mistral:latest`
         """)
         
         with st.form("pull_model_form"):
-            model_name = st.text_input("Tên Model", placeholder="ví dụ: llama3:8b")
+            model_name = st.text_input("Tên Model", placeholder="ví dụ: qwen3:8b")
             submitted = st.form_submit_button("Bắt Đầu Tải Xuống")
             if submitted and model_name:
                 task_id = pull_model(model_name)
@@ -285,12 +286,11 @@ with tab2:
                     st.rerun()
     
     # Phần tải lên model
-    with st.expander("Tải Lên File Model GGUF", expanded=False):
-        st.markdown("""
+    with st.expander("Tải Lên File Model GGUF", expanded=False):        st.markdown("""
         Tải lên trực tiếp file model GGUF. File này sẽ được thêm vào Ollama.
         """)
         
-        with st.form("upload_model_form"):
+    with st.form("upload_model_form"):
             uploaded_file = st.file_uploader("Chọn file GGUF", type=["gguf"])
             custom_name = st.text_input("Tên Model Tùy Chỉnh (tùy chọn)")
             upload_submitted = st.form_submit_button("Tải Lên Model")
@@ -300,7 +300,7 @@ with tab2:
                 if success:
                     st.success(f"Model đã được tải lên thành công")
                     time.sleep(1)
-                st.rerun()
+                    st.rerun()
 
 with tab3:
     st.markdown("### System Prompt Toàn Cục")
@@ -381,19 +381,17 @@ with tab4:
                     <p>{percentage:.1f}% hoàn thành</p>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Nút hủy
+                  # Nút hủy
                 if not progress.get("done", False):
                     if st.button(f"Hủy", key=f"cancel_{model_name}"):
                         if cancel_model_pull(model_name):
                             st.success(f"Đã hủy tải xuống {model_name}")
                             time.sleep(1)
-                        st.rerun()
-    
-    # Logic tự động làm mới
+                            st.rerun()
+      # Logic tự động làm mới
     if auto_refresh and download_progress:
         time.sleep(2)
-    st.rerun()
+        st.rerun()
 
 # Footer with gradient separator
 st.markdown("""
