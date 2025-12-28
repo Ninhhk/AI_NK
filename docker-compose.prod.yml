@@ -35,7 +35,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    command: poetry run streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+    command: streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
 
   redis:
     image: redis:7-alpine

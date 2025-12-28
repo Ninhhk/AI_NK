@@ -11,7 +11,7 @@ import requests
 import time
 
 from langchain_community.llms import Ollama
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 import docx
 from .pptx_generator import PowerPointGenerator
 

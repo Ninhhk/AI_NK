@@ -16,7 +16,7 @@ services:
       - ./output:/app/output
     depends_on:
       - redis
-    command: poetry run uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build:
@@ -30,7 +30,7 @@ services:
       - .:/app
     depends_on:
       - backend
-    command: poetry run streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+    command: streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
 
   redis:
     image: redis:7-alpine

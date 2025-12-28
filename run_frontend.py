@@ -109,9 +109,16 @@ def main():
     
     # Start the Streamlit application
     print(f"Starting Streamlit frontend on port {args.port}...")
+    # Use the current interpreter to run Streamlit so it works without
+    # requiring the user to activate a venv in their shell.
     streamlit_args = [
-        "streamlit", "run", "frontend/app.py",
-        "--server.port", str(args.port),
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        "frontend/app.py",
+        "--server.port",
+        str(args.port),
     ]
     
     # Add headless mode if in CI/CD or if specified in environment

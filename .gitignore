@@ -19,6 +19,9 @@ venv.bak/
 # Poetry cache
 poetry.lock
 
+# uv cache
+.uv/
+
 # OS-specific files
 .DS_Store
 Thumbs.db
@@ -30,24 +33,23 @@ desktop.ini
 *.sublime-workspace
 *.sublime-project
 
-# Local environment variables
+# Local environment variables (keep non-secret env templates committed)
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
+!.env.development
+!.env.production
+!.env.testing
 
 # Output or build artifacts
 output/
 dist/
 build/
 
-# Uploaded files
+# Uploaded files (generated/user content)
 storage/uploads/
 uploads/
-*/uploads/*
-*.pdf
-*.docx
-*.pptx
-*.txt
 
 # Database files
 *.sqlite

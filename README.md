@@ -92,7 +92,7 @@ graph TB
 Before installation, ensure you have:
 
 - **Python 3.8+** ([Download](https://www.python.org/downloads/))
-- **Poetry** ([Installation Guide](https://python-poetry.org/docs/#installation))
+- **uv** ([Installation Guide](https://docs.astral.sh/uv/))
 - **Ollama** ([Download](https://ollama.ai/download))
 - **Git** ([Download](https://git-scm.com/downloads))
 - **Docker** (Optional, [Download](https://docker.com/get-started))
@@ -106,15 +106,15 @@ Before installation, ensure you have:
 git clone https://github.com/your-username/AI_NVCB.git
 cd AI_NVCB
 
-# Install dependencies with Poetry
-poetry install
+# Install dependencies with uv
+uv pip install -r requirements.txt
 
 # Set up environment
 cp .env.example .env
 # Edit .env with your configuration
 
 # Install pre-commit hooks
-poetry run pre-commit install
+pre-commit install
 
 # Start Ollama (in separate terminal)
 ollama serve
@@ -123,8 +123,8 @@ ollama serve
 ollama pull qwen3:8b
 
 # Run the application
-poetry run python run_backend.py
-poetry run python run_frontend.py
+python run_backend.py
+python run_frontend.py
 ```
 
 ### Production Deployment (Docker)
@@ -171,13 +171,13 @@ Initialize the database with migrations and optional test data:
 
 ```bash
 # Initialize database with migrations
-poetry run python -c "from migrations.database_migrator import DatabaseMigrator; import asyncio; asyncio.run(DatabaseMigrator().run_migrations())"
+python -c "from migrations.database_migrator import DatabaseMigrator; import asyncio; asyncio.run(DatabaseMigrator().run_migrations())"
 
 # Seed database with test data (optional)
-poetry run python -c "from migrations.database_seeder import DatabaseSeeder; import asyncio; asyncio.run(DatabaseSeeder().seed_all())"
+python -c "from migrations.database_seeder import DatabaseSeeder; import asyncio; asyncio.run(DatabaseSeeder().seed_all())"
 
 # Check database status
-poetry run python -c "from migrations.database_migrator import DatabaseMigrator; import asyncio; print(asyncio.run(DatabaseMigrator().get_migration_stats()))"
+python -c "from migrations.database_migrator import DatabaseMigrator; import asyncio; print(asyncio.run(DatabaseMigrator().get_migration_stats()))"
 ```
 
 ### 3. Start Services
@@ -185,13 +185,13 @@ poetry run python -c "from migrations.database_migrator import DatabaseMigrator;
 #### Development Mode
 ```bash
 # Start backend with auto-reload
-poetry run python run_backend.py --reload
+python run_backend.py --reload
 
 # Start frontend in development mode (new terminal)
-poetry run streamlit run frontend/main.py --server.runOnSave true
+streamlit run frontend/main.py --server.runOnSave true
 
 # Monitor application health (new terminal)
-poetry run python -c "from utils.health_check import monitor_health; import asyncio; asyncio.run(monitor_health())"
+python -c "from utils.health_check import monitor_health; import asyncio; asyncio.run(monitor_health())"
 ```
 
 #### Production Mode with Docker

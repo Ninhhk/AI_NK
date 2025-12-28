@@ -7,7 +7,6 @@ import re
 import unicodedata
 import time
 import uuid
-import langdetect
 
 from langchain_community.llms import Ollama
 from langchain.text_splitter import RecursiveCharacterTextSplitter

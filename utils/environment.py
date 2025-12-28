@@ -116,9 +116,11 @@ def validate_environment(
         required_packages = [
             "fastapi", "uvicorn", "python-multipart", "langchain", 
             "langchain-community", "streamlit", "python-dotenv",
-            "langdetect", "sentence-transformers", "faiss-cpu"
+            "sentence-transformers", "faiss-cpu"
         ]
     
+    # If required_models is None and we're checking Ollama, default to one model.
+    # If required_models is an empty list, treat Ollama as optional (warning only).
     if required_models is None and check_ollama:
         required_models = ["qwen3:8b"]
     
@@ -155,10 +157,14 @@ def validate_environment(
     if missing_packages:
         result["overall_valid"] = False
     
-    if check_ollama and (not result["ollama"]["running"] or 
-                        (result["ollama"].get("missing_models") and 
-                         len(result["ollama"]["missing_models"]) > 0)):
-        result["overall_valid"] = False
+    if check_ollama:
+        # If caller provided no required models, treat Ollama as optional.
+        if required_models:
+            if (not result["ollama"]["running"] or (
+                result["ollama"].get("missing_models")
+                and len(result["ollama"]["missing_models"]) > 0
+            )):
+                result["overall_valid"] = False
     
     # Print results if verbose
     if verbose:
