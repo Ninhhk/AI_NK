@@ -59,33 +59,28 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 ### 2.2.1 Biểu đồ use case tổng quát
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           HỆ THỐNG AI NVCB                                  │
-│                                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────┐                        │
-│  │  Phân tích tài liệu │    │   Tạo Slide AI      │                        │
-│  └─────────────────────┘    └─────────────────────┘                        │
-│            ▲                          ▲                                     │
-│            │                          │                                     │
-│  ┌─────────┴─────────────────────────┴─────────┐                           │
-│  │                                              │                           │
-│  │              ┌──────────────┐               │                           │
-│  │              │  Người dùng  │               │                           │
-│  │              └──────────────┘               │                           │
-│  │                    │                        │                           │
-│  └────────────────────┼────────────────────────┘                           │
-│                       │                                                     │
-│            ▼                          ▼                                     │
-│  ┌─────────────────────┐    ┌─────────────────────┐                        │
-│  │ Tạo bài trắc nghiệm │    │   Quản lý Model AI  │                        │
-│  └─────────────────────┘    └─────────────────────┘                        │
-│                                       ▲                                     │
-│                                       │                                     │
-│                              ┌────────┴────────┐                           │
-│                              │  Quản trị viên  │                           │
-│                              └─────────────────┘                           │
-└─────────────────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Người dùng" as User
+actor "Quản trị viên" as Admin
+
+rectangle "HỆ THỐNG AI NVCB" {
+    usecase "UC01: Phân tích tài liệu" as UC01
+    usecase "UC02: Tạo Slide AI" as UC02
+    usecase "UC03: Tạo bài trắc nghiệm" as UC03
+    usecase "UC04: Quản lý Model AI" as UC04
+}
+
+User --> UC01
+User --> UC02
+User --> UC03
+Admin --> UC04
+
+@enduml
 ```
 
 **Các tác nhân (Actors):**
@@ -108,32 +103,30 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 ### 2.2.2 Biểu đồ use case phân rã - Phân tích tài liệu
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                    PHÂN TÍCH TÀI LIỆU                             │
-│                                                                   │
-│    ┌─────────────────┐                                           │
-│    │  Tải tài liệu   │ ◄─────────────────────┐                   │
-│    └─────────────────┘                       │                   │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐              ┌────────┴───────┐           │
-│    │  Tóm tắt nội    │              │   Người dùng   │           │
-│    │     dung        │ ◄────────────┤                │           │
-│    └─────────────────┘              └────────┬───────┘           │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐                       │                   │
-│    │  Hỏi đáp tài    │ ◄─────────────────────┘                   │
-│    │     liệu (Q&A)  │                                           │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Xem lịch sử    │                                           │
-│    │  hội thoại      │                                           │
-│    └─────────────────┘                                           │
-└───────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Người dùng" as User
+
+rectangle "PHÂN TÍCH TÀI LIỆU" {
+    usecase "UC01.1: Tải tài liệu" as UC011
+    usecase "UC01.2: Tóm tắt nội dung" as UC012
+    usecase "UC01.3: Hỏi đáp tài liệu (Q&A)" as UC013
+    usecase "UC01.4: Xem lịch sử hội thoại" as UC014
+}
+
+User --> UC011
+User --> UC012
+User --> UC013
+User --> UC014
+
+UC012 ..> UC011 : <<include>>
+UC013 ..> UC011 : <<include>>
+
+@enduml
 ```
 
 **Mô tả các use case phân rã:**
@@ -149,38 +142,33 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 ### 2.2.3 Biểu đồ use case phân rã - Tạo Slide AI
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                      TẠO SLIDE AI                                 │
-│                                                                   │
-│    ┌─────────────────┐                                           │
-│    │  Nhập chủ đề/   │ ◄─────────────────────┐                   │
-│    │  tải tài liệu   │                       │                   │
-│    └─────────────────┘                       │                   │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐              ┌────────┴───────┐           │
-│    │  Cấu hình số    │              │   Người dùng   │           │
-│    │  lượng slide    │ ◄────────────┤                │           │
-│    └─────────────────┘              └────────┬───────┘           │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐                       │                   │
-│    │  Chọn model AI  │ ◄─────────────────────┘                   │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Tạo và xem     │                                           │
-│    │  trước slide    │                                           │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Tải xuống file │                                           │
-│    │  PPTX           │                                           │
-│    └─────────────────┘                                           │
-└───────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Người dùng" as User
+
+rectangle "TẠO SLIDE AI" {
+    usecase "UC02.1: Nhập chủ đề/tải tài liệu" as UC021
+    usecase "UC02.2: Cấu hình số lượng slide" as UC022
+    usecase "UC02.3: Chọn model AI" as UC023
+    usecase "UC02.4: Tạo và xem trước slide" as UC024
+    usecase "UC02.5: Tải xuống file PPTX" as UC025
+}
+
+User --> UC021
+User --> UC022
+User --> UC023
+User --> UC024
+User --> UC025
+
+UC024 ..> UC021 : <<include>>
+UC024 ..> UC022 : <<include>>
+UC025 ..> UC024 : <<include>>
+
+@enduml
 ```
 
 **Mô tả các use case phân rã:**
@@ -197,38 +185,34 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 ### 2.2.4 Biểu đồ use case phân rã - Tạo bài trắc nghiệm
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                   TẠO BÀI TRẮC NGHIỆM                             │
-│                                                                   │
-│    ┌─────────────────┐                                           │
-│    │  Tải tài liệu   │ ◄─────────────────────┐                   │
-│    │  nguồn          │                       │                   │
-│    └─────────────────┘                       │                   │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐              ┌────────┴───────┐           │
-│    │  Cấu hình số    │              │   Người dùng   │           │
-│    │  câu hỏi        │ ◄────────────┤                │           │
-│    └─────────────────┘              └────────┬───────┘           │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐                       │                   │
-│    │  Chọn độ khó    │ ◄─────────────────────┘                   │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Tạo bài trắc   │                                           │
-│    │  nghiệm         │                                           │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Xem kết quả    │                                           │
-│    │  và đáp án      │                                           │
-│    └─────────────────┘                                           │
-└───────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Người dùng" as User
+
+rectangle "TẠO BÀI TRẮC NGHIỆM" {
+    usecase "UC03.1: Tải tài liệu nguồn" as UC031
+    usecase "UC03.2: Cấu hình số câu hỏi" as UC032
+    usecase "UC03.3: Chọn độ khó" as UC033
+    usecase "UC03.4: Tạo bài trắc nghiệm" as UC034
+    usecase "UC03.5: Xem kết quả và đáp án" as UC035
+}
+
+User --> UC031
+User --> UC032
+User --> UC033
+User --> UC034
+User --> UC035
+
+UC034 ..> UC031 : <<include>>
+UC034 ..> UC032 : <<include>>
+UC034 ..> UC033 : <<include>>
+UC035 ..> UC034 : <<include>>
+
+@enduml
 ```
 
 **Mô tả các use case phân rã:**
@@ -245,38 +229,32 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 ### 2.2.5 Biểu đồ use case phân rã - Quản lý Model AI
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                    QUẢN LÝ MODEL AI                               │
-│                                                                   │
-│    ┌─────────────────┐                                           │
-│    │  Xem danh sách  │ ◄─────────────────────┐                   │
-│    │  model          │                       │                   │
-│    └─────────────────┘                       │                   │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐              ┌────────┴───────┐           │
-│    │  Tải model mới  │              │  Quản trị viên │           │
-│    │  (Pull)         │ ◄────────────┤                │           │
-│    └─────────────────┘              └────────┬───────┘           │
-│            │                                 │                   │
-│            ▼                                 │                   │
-│    ┌─────────────────┐                       │                   │
-│    │  Chọn model     │ ◄─────────────────────┘                   │
-│    │  mặc định       │                                           │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Xóa model      │                                           │
-│    └─────────────────┘                                           │
-│            │                                                     │
-│            ▼                                                     │
-│    ┌─────────────────┐                                           │
-│    │  Cấu hình       │                                           │
-│    │  System Prompt  │                                           │
-│    └─────────────────┘                                           │
-└───────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Quản trị viên" as Admin
+
+rectangle "QUẢN LÝ MODEL AI" {
+    usecase "UC04.1: Xem danh sách model" as UC041
+    usecase "UC04.2: Tải model mới (Pull)" as UC042
+    usecase "UC04.3: Chọn model mặc định" as UC043
+    usecase "UC04.4: Xóa model" as UC044
+    usecase "UC04.5: Cấu hình System Prompt" as UC045
+}
+
+Admin --> UC041
+Admin --> UC042
+Admin --> UC043
+Admin --> UC044
+Admin --> UC045
+
+UC043 ..> UC041 : <<include>>
+UC044 ..> UC041 : <<include>>
+
+@enduml
 ```
 
 **Mô tả các use case phân rã:**
@@ -295,51 +273,30 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 #### Quy trình 1: Tạo bài giảng từ tài liệu
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                    QUY TRÌNH TẠO BÀI GIẢNG TỪ TÀI LIỆU                       │
-└──────────────────────────────────────────────────────────────────────────────┘
-       │
-       ▼
-┌──────────────────┐
-│  Bắt đầu         │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐     ┌──────────────────┐
-│  Tải tài liệu    │────►│  Phân tích và    │
-│  lên hệ thống    │     │  tóm tắt nội dung│
-└──────────────────┘     └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │  Nội dung đã     │
-                         │  phù hợp?        │
-                         └────────┬─────────┘
-                                  │
-                    ┌─────────────┼─────────────┐
-                    │ Không       │             │ Có
-                    ▼             │             ▼
-           ┌──────────────┐       │    ┌──────────────────┐
-           │  Hỏi đáp để  │───────┘    │  Tạo Slide AI    │
-           │  bổ sung     │            │  từ nội dung     │
-           └──────────────┘            └────────┬─────────┘
-                                                │
-                                                ▼
-                                       ┌──────────────────┐
-                                       │  Tải file PPTX   │
-                                       └────────┬─────────┘
-                                                │
-                                                ▼
-                                       ┌──────────────────┐
-                                       │  Tạo bài trắc    │
-                                       │  nghiệm kiểm tra │
-                                       └────────┬─────────┘
-                                                │
-                                                ▼
-                                       ┌──────────────────┐
-                                       │  Kết thúc        │
-                                       └──────────────────┘
+```plantuml
+@startuml
+skinparam activityShape octagon
+
+start
+
+:Tải tài liệu lên hệ thống;
+
+:Phân tích và tóm tắt nội dung;
+
+if (Nội dung đã phù hợp?) then (Có)
+    :Tạo Slide AI từ nội dung;
+else (Không)
+    :Hỏi đáp để bổ sung;
+    :Tạo Slide AI từ nội dung;
+endif
+
+:Tải file PPTX;
+
+:Tạo bài trắc nghiệm kiểm tra;
+
+stop
+
+@enduml
 ```
 
 **Mô tả quy trình:**
@@ -480,74 +437,38 @@ Dựa trên khảo sát, hệ thống AI NVCB cần đáp ứng các tính năng
 
 **Biểu đồ hoạt động:**
 
-```
-┌─────────┐
-│  Bắt đầu│
-└────┬────┘
-     │
-     ▼
-┌─────────────────┐
-│ Nhập chủ đề/    │
-│ tải tài liệu    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Cấu hình số     │
-│ lượng slide     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Nhấn "Tạo Slide"│
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Có tài liệu?    │─Yes─► Trích xuất      │
-└────────┬────────┘     │ nội dung        │
-         │ No           └────────┬────────┘
-         │                       │
-         └───────────┬───────────┘
-                     │
-                     ▼
-            ┌─────────────────┐
-            │ Tạo prompt và   │
-            │ gửi đến AI      │
-            └────────┬────────┘
-                     │
-                     ▼
-            ┌─────────────────┐
-            │ Parse JSON      │
-            │ response        │
-            └────────┬────────┘
-                     │
-                     ▼
-            ┌─────────────────┐
-            │ Valid JSON?     │
-            └────────┬────────┘
-                     │
-         ┌───────────┼───────────┐
-         │ No        │           │ Yes
-         ▼           │           ▼
-┌─────────────────┐  │  ┌─────────────────┐
-│ Retry/Báo lỗi   │──┘  │ Tạo file PPTX   │
-└─────────────────┘     └────────┬────────┘
-                                 │
-                                 ▼
-                        ┌─────────────────┐
-                        │ Hiển thị preview│
-                        └────────┬────────┘
-                                 │
-                                 ▼
-                        ┌─────────────────┐
-                        │ Tải xuống PPTX  │
-                        └────────┬────────┘
-                                 │
-                                 ▼
-                        ┌─────────────────┐
-                        │    Kết thúc     │
-                        └─────────────────┘
+```plantuml
+@startuml
+skinparam activityShape octagon
+
+start
+
+:Nhập chủ đề/tải tài liệu;
+
+:Cấu hình số lượng slide;
+
+:Nhấn "Tạo Slide";
+
+if (Có tài liệu?) then (Có)
+    :Trích xuất nội dung;
+endif
+
+:Tạo prompt và gửi đến AI;
+
+:Parse JSON response;
+
+if (Valid JSON?) then (Có)
+    :Tạo file PPTX;
+    :Hiển thị preview;
+    :Tải xuống PPTX;
+else (Không)
+    :Retry/Báo lỗi;
+    :Tạo prompt và gửi đến AI;
+endif
+
+stop
+
+@enduml
 ```
 
 ---
