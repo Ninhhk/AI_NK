@@ -265,6 +265,8 @@ class OneClickSetup:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 cwd=str(SCRIPT_DIR)
             )
             
@@ -351,7 +353,9 @@ class OneClickSetup:
                 ['ollama', 'pull', model_name],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True
+                text=True,
+                encoding='utf-8',
+                errors='replace'
             )
             
             for line in process.stdout:
