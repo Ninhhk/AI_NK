@@ -2,10 +2,38 @@ import os
 import sys
 from pathlib import Path
 import argparse
+import subprocess
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.absolute()
 sys.path.append(str(project_root))
+
+# Virtual environment paths
+VENV_PATH = project_root / ".venv"
+VENV_PYTHON = VENV_PATH / ("Scripts" if sys.platform == "win32" else "bin") / ("python.exe" if sys.platform == "win32" else "python")
+
+
+def ensure_venv():
+    """
+    Check if running inside the venv. If not, restart using venv Python.
+    Returns True if already in venv or venv doesn't exist.
+    """
+    # Skip if venv doesn't exist
+    if not VENV_PYTHON.exists():
+        return True
+    
+    # Check if we're already running from venv
+    current_python = Path(sys.executable).resolve()
+    venv_python_resolved = VENV_PYTHON.resolve()
+    
+    if current_python == venv_python_resolved:
+        return True
+    
+    # Re-execute using venv Python
+    print(f"🔄 Restarting with venv Python: {VENV_PYTHON}")
+    result = subprocess.run([str(VENV_PYTHON)] + sys.argv)
+    sys.exit(result.returncode)
+
 
 # Import environment validation utilities
 try:
@@ -25,6 +53,11 @@ def parse_args():
         "--skip-validation", 
         action="store_true", 
         help="Skip environment validation"
+    )
+    parser.add_argument(
+        "--no-venv", 
+        action="store_true", 
+        help="Don't use virtual environment even if it exists"
     )
     parser.add_argument(
         "--host", 
@@ -55,6 +88,10 @@ def parse_args():
 
 
 def main():
+    # Check for --no-venv flag before anything else
+    if "--no-venv" not in sys.argv:
+        ensure_venv()
+    
     # Parse command line arguments
     args = parse_args()
     

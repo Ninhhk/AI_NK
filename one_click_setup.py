@@ -6,15 +6,17 @@ Kết hợp chức năng từ ai_nvcb_utility.py và update_and_test.py thành m
 Script này sẽ tự động:
 1. Thiết lập môi trường (.env.example → .env)
 2. Stash và pull git changes
-3. Cài đặt dependencies (pip install -r requirements.txt)
-4. Tải và cấu hình AI model (mặc định: qwen3-vl:4b)
-5. Kiểm tra dependencies
+3. Tạo virtual environment (venv) để cô lập dependencies
+4. Cài đặt dependencies (pip install -r requirements.txt)
+5. Tải và cấu hình AI model (mặc định: qwen3-vl:4b)
+6. Kiểm tra dependencies
 
 Usage:
     python one_click_setup.py                    # Chạy full setup
     python one_click_setup.py --skip-git         # Bỏ qua git operations
     python one_click_setup.py --skip-model       # Bỏ qua model setup
     python one_click_setup.py --skip-deps        # Bỏ qua cài đặt dependencies
+    python one_click_setup.py --skip-venv        # Bỏ qua tạo virtual environment
     python one_click_setup.py --dry-run          # Xem trước không thực hiện
     python one_click_setup.py --force            # Bỏ qua xác nhận
 """
@@ -35,6 +37,21 @@ SCRIPT_DIR = Path(__file__).parent
 ENV_EXAMPLE_PATH = SCRIPT_DIR / ".env.example"
 ENV_PATH = SCRIPT_DIR / ".env"
 REQUIREMENTS_PATH = SCRIPT_DIR / "requirements.txt"
+VENV_PATH = SCRIPT_DIR / ".venv"
+
+
+def get_venv_python() -> Path:
+    """Get the Python executable path for the virtual environment."""
+    if sys.platform == "win32":
+        return VENV_PATH / "Scripts" / "python.exe"
+    return VENV_PATH / "bin" / "python"
+
+
+def get_venv_pip() -> Path:
+    """Get the pip executable path for the virtual environment."""
+    if sys.platform == "win32":
+        return VENV_PATH / "Scripts" / "pip.exe"
+    return VENV_PATH / "bin" / "pip"
 
 
 class Colors:
@@ -101,6 +118,8 @@ class OneClickSetup:
         steps = 1  # Environment setup (always)
         if not self.args.skip_git:
             steps += 1  # Git operations
+        if not self.args.skip_venv:
+            steps += 1  # Virtual environment
         if not self.args.skip_deps:
             steps += 1  # Dependencies
         if not self.args.skip_model:
@@ -240,6 +259,53 @@ class OneClickSetup:
             print_warning(f"Không thể tự động khôi phục stash: {self.stash_name}")
             print_info("Bạn có thể khôi phục thủ công bằng: git stash pop")
     
+    # ==================== VIRTUAL ENVIRONMENT ====================
+    
+    def setup_venv(self) -> bool:
+        """Create virtual environment for isolated dependencies."""
+        self.next_step("Tạo Virtual Environment")
+        
+        if self.args.dry_run:
+            print_info(f"Dry run: Sẽ tạo venv tại {VENV_PATH}")
+            return True
+        
+        venv_python = get_venv_python()
+        
+        # Check if venv already exists
+        if VENV_PATH.exists() and venv_python.exists():
+            print_info(f"Virtual environment đã tồn tại: {VENV_PATH}")
+            if not self.args.force:
+                response = input("   Bạn có muốn tạo lại venv không? (y/N): ").strip().lower()
+                if response not in ('y', 'yes'):
+                    print_info("Giữ nguyên venv hiện tại.")
+                    return True
+            # Remove existing venv
+            print_info("Đang xóa venv cũ...")
+            try:
+                shutil.rmtree(VENV_PATH)
+            except Exception as e:
+                print_error(f"Không thể xóa venv cũ: {e}")
+                return False
+        
+        print_info(f"Đang tạo virtual environment tại: {VENV_PATH}")
+        
+        try:
+            import venv
+            # Create venv with pip
+            venv.create(VENV_PATH, with_pip=True)
+            
+            if venv_python.exists():
+                print_success(f"Đã tạo virtual environment!")
+                print_info(f"   Python: {venv_python}")
+                return True
+            else:
+                print_error("Tạo venv thất bại - không tìm thấy Python executable")
+                return False
+                
+        except Exception as e:
+            print_error(f"Lỗi khi tạo virtual environment: {e}")
+            return False
+    
     # ==================== DEPENDENCIES ====================
     
     def install_dependencies(self) -> bool:
@@ -255,13 +321,22 @@ class OneClickSetup:
             print_error(f"Không tìm thấy file requirements.txt!")
             return False
         
+        # Determine which Python/pip to use
+        venv_python = get_venv_python()
+        if not self.args.skip_venv and venv_python.exists():
+            python_exe = str(venv_python)
+            print_info(f"Sử dụng venv Python: {venv_python}")
+        else:
+            python_exe = sys.executable
+            print_warning("Cài đặt vào Python hệ thống (không dùng venv)")
+        
         print_info("Đang cài đặt dependencies từ requirements.txt...")
         print_info("(Quá trình này có thể mất vài phút)")
         
         try:
             # Use subprocess to show real-time output
             process = subprocess.Popen(
-                [sys.executable, "-m", "pip", "install", "-r", str(REQUIREMENTS_PATH)],
+                [python_exe, "-m", "pip", "install", "-r", str(REQUIREMENTS_PATH)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -487,6 +562,7 @@ class OneClickSetup:
         
         print(f"📋 Cấu hình setup:")
         print(f"   • Skip Git: {'Có' if self.args.skip_git else 'Không'}")
+        print(f"   • Skip Venv: {'Có' if self.args.skip_venv else 'Không'}")
         print(f"   • Skip Dependencies: {'Có' if self.args.skip_deps else 'Không'}")
         print(f"   • Skip Model: {'Có' if self.args.skip_model else 'Không'}")
         print(f"   • Dry Run: {'Có' if self.args.dry_run else 'Không'}")
@@ -509,7 +585,11 @@ class OneClickSetup:
         if not self.args.skip_git:
             self.results['git'] = self.git_operations()
         
-        # Step 3: Install dependencies (if not skipped)
+        # Step 3: Virtual environment setup (if not skipped)
+        if not self.args.skip_venv:
+            self.results['venv'] = self.setup_venv()
+        
+        # Step 4: Install dependencies (if not skipped)
         if not self.args.skip_deps:
             self.results['dependencies'] = self.install_dependencies()
         
@@ -539,6 +619,7 @@ class OneClickSetup:
             step_name = {
                 'environment': 'Thiết lập môi trường',
                 'git': 'Git operations',
+                'venv': 'Virtual environment',
                 'dependencies': 'Cài đặt dependencies',
                 'model': 'Thiết lập AI model',
                 'validation': 'Kiểm tra xác nhận'
@@ -571,6 +652,7 @@ def parse_args() -> argparse.Namespace:
 Ví dụ sử dụng:
   python one_click_setup.py                    # Full setup
   python one_click_setup.py --skip-git         # Bỏ qua git operations
+  python one_click_setup.py --skip-venv        # Bỏ qua tạo virtual environment
   python one_click_setup.py --skip-model       # Bỏ qua model setup
   python one_click_setup.py --skip-deps        # Bỏ qua cài đặt dependencies
   python one_click_setup.py --dry-run          # Xem trước không thực hiện
@@ -582,6 +664,11 @@ Ví dụ sử dụng:
         '--skip-git',
         action='store_true',
         help='Bỏ qua git stash/pull operations'
+    )
+    parser.add_argument(
+        '--skip-venv',
+        action='store_true',
+        help='Bỏ qua tạo virtual environment (cài vào Python hệ thống)'
     )
     parser.add_argument(
         '--skip-deps',
