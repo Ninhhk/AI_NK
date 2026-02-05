@@ -1,0 +1,60 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Lưu ý: \textbf{Trước khi viết ĐATN, sinh viên cần đọc kỹ hướng dẫn và quy định chi tiết} về cách viết ĐATN trong Phụ lục A. Sinh viên tuân theo mẫu tài liệu này để viết báo cáo đồ án tốt nghiệp, vì tài liệu này đã được căn chỉnh, chỉnh sửa theo đúng chuẩn báo cáo kỹ thuật đồ án tốt nghiệp (ISO 7144:1986). Sinh viên viết trực tiếp vào file này, chỉ chỉnh sửa nội dung, và không viết trên file mới.
+
+\textbf{Khi đóng quyển ĐATN}, sinh viên cần lưu ý tuân thủ hướng dẫn ở phụ lục A.9
+
+\textbf{SV cần đặc biệt lưu ý cách hành văn}. Mỗi đoạn văn không được quá dài và cần có ý tứ rõ ràng, bao gồm duy nhất một ý chính và các ý phân tích bổ trợ để làm rõ hơn ý chính. Các câu văn trong đoạn phải đầy đủ chủ ngữ vị ngữ, cùng hướng đến chủ đề chung. Câu sau phải liên kết với câu trước, đoạn sau liên kết với đoạn trước. Trong văn phong khoa học, sinh viên không được dùng từ trong văn nói, không dùng các từ phóng đại, thái quá, các từ thiếu khách quan, thiên về cảm xúc, về quan điểm cá nhân như “tuyệt vời”, “cực hay”, “cực kỳ hữu ích”, v.v. Các câu văn cần được tối ưu hóa, đảm bảo rất khó để thể thêm hoặc bớt đi được dù chỉ một từ. Cách diễn đạt cần ngắn gọn, súc tích, không dài dòng.
+
+Mẫu ĐATN này được thiết kế phù hợp nhất với đa số các đề tài xây dựng phần mềm ứng dụng. Với các dạng đề tài khác (giải pháp, nghiên cứu, phần mềm đặc thù, v.v.), sinh viên dựa trên cấu trúc và hướng dẫn của báo cáo này để đề xuất và trao đổi với giáo viên hướng dẫn để thiết kế khung báo cáo đồ án cho phù hợp. Sinh viên lưu ý \textbf{trong mọi trường hợp, SV luôn phải sử dụng định dạng báo cáo này, và phải đọc kỹ toàn bộ các hướng dẫn từ đầu tới cuối.} Các hướng dẫn không chỉ áp dụng riêng cho đề tài ứng dụng, mà còn phù hợp với các dạng đề tài khác. Ngoài ra, trong mẫu ĐATN này đã được tích hợp một số hướng dẫn dành riêng cho đề tài nghiên cứu.
+
+Chương 1 có độ dài từ 3 đến 6 trang với các nội dung sau đây
+
+\section{Đặt vấn đề}
+\label{section:1.1}
+Trong bối cảnh chuyển đổi số toàn cầu, giáo dục là một trong những lĩnh vực đang chịu tác động mạnh mẽ từ sự phát triển của trí tuệ nhân tạo (AI). Theo báo cáo của UNESCO năm 2023, hơn 60\% các cơ sở giáo dục trên thế giới đang tìm kiếm giải pháp ứng dụng AI để nâng cao hiệu quả giảng dạy và học tập. Tại Việt Nam, nhu cầu này càng trở nên cấp thiết khi số lượng giáo viên, sinh viên và nhân viên văn phòng cần xử lý khối lượng tài liệu lớn ngày càng tăng.
+
+Việc soạn thảo bài giảng, tạo slide trình bày và biên soạn bài kiểm tra trắc nghiệm là những công việc tốn nhiều thời gian và công sức của giáo viên. Một giáo viên trung bình có thể mất từ 2-4 giờ để tạo một bộ slide bài giảng hoàn chỉnh từ tài liệu có sẵn, và thêm 1-2 giờ để biên soạn bộ câu hỏi trắc nghiệm tương ứng. Khi nhân với số lượng bài giảng trong một học kỳ, thời gian này trở thành gánh nặng đáng kể, ảnh hưởng đến chất lượng giảng dạy và nghiên cứu.
+
+Hiện nay, nhiều công cụ AI như ChatGPT, Google Gemini, Gamma.app đã ra đời để hỗ trợ các tác vụ này. Tuy nhiên, các công cụ này đều hoạt động trên nền tảng đám mây (cloud-based), dẫn đến một số thách thức nghiêm trọng trong môi trường giáo dục Việt Nam. Thứ nhất, vấn đề bảo mật dữ liệu khi tài liệu giảng dạy, đề thi, bài kiểm tra là tài sản trí tuệ quan trọng của giáo viên và nhà trường. Thứ hai, chi phí sử dụng các dịch vụ AI thương mại cao, không phù hợp với ngân sách giáo dục còn hạn chế. Thứ ba, nhiều cơ sở giáo dục ở vùng sâu, vùng xa có kết nối Internet không ổn định, khiến việc sử dụng dịch vụ đám mây trở nên khó khăn.
+
+Xuất phát từ thực tế trên, việc xây dựng một hệ thống AI có khả năng hoạt động hoàn toàn nội bộ (on-premise), đảm bảo bảo mật dữ liệu và không phụ thuộc kết nối Internet là một nhu cầu thiết thực. Nếu vấn đề này được giải quyết, giáo viên và người dùng có thể tiết kiệm đáng kể thời gian soạn bài, đồng thời đảm bảo an toàn cho dữ liệu giáo dục nhạy cảm. Giải pháp này không chỉ áp dụng trong lĩnh vực giáo dục mà còn có thể mở rộng sang các lĩnh vực khác như doanh nghiệp, tổ chức chính phủ nơi yêu cầu cao về bảo mật thông tin.
+
+\section{Mục tiêu và phạm vi đề tài}
+\label{section:1.2}
+Hiện nay, các giải pháp hỗ trợ phân tích tài liệu và tạo nội dung tự động trên thị trường có thể chia thành hai nhóm chính. Nhóm thứ nhất là các chatbot AI đa năng như ChatGPT, Google Gemini, Claude. Các công cụ này có khả năng xử lý ngôn ngữ tự nhiên mạnh mẽ, hỗ trợ phân tích tài liệu và trả lời câu hỏi. Tuy nhiên, chúng không thể tạo file slide PowerPoint trực tiếp, chi phí sử dụng cao (ChatGPT Plus: \$20/tháng), và dữ liệu được gửi lên máy chủ cloud, tiềm ẩn rủi ro bảo mật. Nhóm thứ hai là các công cụ tạo slide chuyên biệt như Gamma.app, Beautiful.ai, Canva AI. Các công cụ này tạo slide với giao diện đẹp mắt và nhiều template chuyên nghiệp. Tuy nhiên, chúng không có khả năng phân tích tài liệu đầu vào, không hỗ trợ hỏi đáp với nội dung, chi phí cao (Gamma Pro: \$15/tháng), và hoàn toàn phụ thuộc vào kết nối Internet.
+
+Qua so sánh, có thể nhận thấy các hạn chế chung của các giải pháp hiện tại bao gồm: (i) không thể triển khai nội bộ (on-premise) để đảm bảo bảo mật, (ii) không tích hợp đầy đủ các chức năng phân tích tài liệu, tạo slide và tạo quiz trong một hệ thống, (iii) chi phí vận hành cao do phụ thuộc vào API trả phí, và (iv) khả năng tùy chỉnh hạn chế, đặc biệt về mặt mô hình AI và ngôn ngữ.
+
+Trên cơ sở đó, đồ án này hướng tới mục tiêu xây dựng một hệ thống phân tích tài liệu và tạo slide thông minh có tên \textbf{AI NVCB} với các chức năng chính sau. Thứ nhất, phân tích tài liệu đa định dạng bao gồm PDF, DOCX, TXT, MD với khả năng tóm tắt nội dung và hỏi đáp thông minh dựa trên kỹ thuật RAG (Retrieval-Augmented Generation). Thứ hai, tạo slide tự động từ chủ đề hoặc tài liệu đầu vào, xuất file PowerPoint (PPTX) có thể chỉnh sửa. Thứ ba, tạo bài trắc nghiệm tự động với câu hỏi và đáp án từ nội dung tài liệu. Thứ tư, quản lý mô hình AI linh hoạt, cho phép người dùng thay đổi mô hình ngôn ngữ lớn (LLM) phù hợp với nhu cầu và cấu hình phần cứng.
+
+Phạm vi của đề tài giới hạn trong việc xây dựng hệ thống ứng dụng web hoạt động trên máy chủ nội bộ, sử dụng Ollama làm nền tảng chạy LLM cục bộ. Hệ thống được tối ưu cho ngôn ngữ tiếng Việt và hướng đến đối tượng người dùng chính là giáo viên, sinh viên và nhân viên văn phòng.
+
+\section{Định hướng giải pháp}
+\label{section:1.3}
+Để giải quyết các vấn đề đã nêu, đồ án lựa chọn hướng tiếp cận xây dựng nền tảng AI on-premise, sử dụng các công nghệ mã nguồn mở và mô hình ngôn ngữ lớn chạy cục bộ.
+
+Về công nghệ AI, đồ án sử dụng \textbf{Ollama} làm LLM server cho phép chạy các mô hình ngôn ngữ lớn như Qwen2.5, Llama 3, Gemma 2 trực tiếp trên máy tính. Kết hợp với \textbf{LangChain} làm framework điều phối, hệ thống triển khai pipeline RAG (Retrieval-Augmented Generation) để hỏi đáp dựa trên ngữ cảnh tài liệu. Vector database \textbf{FAISS} được sử dụng để lưu trữ và tìm kiếm ngữ nghĩa trên embedding của tài liệu.
+
+Về kiến trúc hệ thống, đồ án áp dụng kiến trúc phân lớp (Layered Architecture) với bốn tầng chính: tầng trình bày (Streamlit), tầng API (FastAPI), tầng nghiệp vụ (Document Service, Slide Service, Model Manager), và tầng truy cập dữ liệu (Repository Pattern với SQLite). Kiến trúc này đảm bảo tính module hóa, dễ bảo trì và mở rộng.
+
+Giải pháp của đồ án là hệ thống AI NVCB - một nền tảng tích hợp cho phép: (i) upload và phân tích tài liệu đa định dạng, (ii) tóm tắt nội dung và hỏi đáp với RAG, (iii) tự động sinh slide PowerPoint với nội dung từ LLM, (iv) tạo câu hỏi trắc nghiệm từ tài liệu, và (v) quản lý linh hoạt các mô hình AI với khả năng hot-swap không cần khởi động lại hệ thống.
+
+Đóng góp chính của đồ án bao gồm sáu điểm nổi bật. Thứ nhất, xây dựng thành công nền tảng AI on-premise hoàn toàn hoạt động offline, đảm bảo bảo mật dữ liệu 100\%. Thứ hai, thiết kế pipeline RAG tối ưu cho tiếng Việt với chiến lược chunking và truy xuất theo chủ đề, đạt F1-Score 84\% trên bộ test nội bộ. Thứ ba, phát triển hệ thống quản lý LLM linh hoạt với Singleton Pattern, cho phép chuyển đổi mô hình trong thời gian dưới 2 giây. Thứ tư, giải quyết vấn đề xử lý tiếng Việt với LLM đa ngôn ngữ thông qua bộ lọc ký tự và prompt engineering, đạt tỷ lệ output thuần Việt 99.5\%. Thứ năm, triển khai cơ chế structured generation với logic retry, đạt tỷ lệ parse JSON thành công 99\%. Thứ sáu, thiết kế hệ thống sẵn sàng production với Docker multi-stage build, giảm 68\% kích thước image và tích hợp health monitoring.
+
+\section{Bố cục đồ án}
+\label{section:1.4}
+Phần còn lại của báo cáo đồ án tốt nghiệp này được tổ chức như sau.
+
+Chương 2 trình bày quá trình khảo sát hiện trạng và phân tích yêu cầu cho hệ thống AI NVCB. Nội dung chương bao gồm khảo sát các sản phẩm tương tự trên thị trường, xây dựng biểu đồ use case tổng quát và phân rã cho từng chức năng chính, đặc tả chi tiết các use case quan trọng, cùng các yêu cầu phi chức năng về hiệu năng, bảo mật và khả năng bảo trì của hệ thống.
+
+Trong Chương 3, em trình bày các công nghệ và nền tảng được sử dụng trong quá trình phát triển hệ thống. Chương này phân tích các lựa chọn công nghệ cho từng thành phần: Ollama và LangChain cho xử lý ngôn ngữ tự nhiên, FastAPI cho backend API, Streamlit cho giao diện người dùng, FAISS cho vector database, python-pptx cho tạo file PowerPoint, cùng Docker và Nginx cho triển khai production. Với mỗi công nghệ, lý do lựa chọn được giải thích dựa trên các yêu cầu đã xác định tại Chương 2.
+
+Chương 4 trình bày chi tiết thiết kế, triển khai và đánh giá hệ thống. Về thiết kế, chương mô tả kiến trúc phân lớp với biểu đồ gói UML, thiết kế chi tiết giao diện người dùng, biểu đồ lớp cho các service chính, và cơ sở dữ liệu SQLite. Về triển khai, chương trình bày môi trường phát triển, các API endpoint, và quy trình Docker hóa. Về đánh giá, chương đưa ra kết quả kiểm thử chức năng, phi chức năng và các hình ảnh demo hệ thống.
+
+Chương 5 trình bày đóng góp chính của đồ án, bao gồm sáu giải pháp kỹ thuật nổi bật. Thứ nhất là giải pháp nền tảng AI on-premise cho phép hoạt động hoàn toàn offline với Ollama. Thứ hai là pipeline RAG đa tài liệu với truy xuất theo chủ đề, tối ưu cho tiếng Việt. Thứ ba là hệ thống quản lý LLM linh hoạt với cơ chế hot-swapping. Thứ tư là bộ giải pháp xử lý ngôn ngữ Việt với LLM đa ngôn ngữ. Thứ năm là cơ chế structured generation với JSON parsing robust. Thứ sáu là thiết kế production-ready với Docker và health monitoring. Với mỗi giải pháp, chương trình bày vấn đề, giải pháp đề xuất và kết quả đạt được.
+
+Chương 6 trình bày kết luận và hướng phát triển của đồ án. Phần kết luận so sánh hệ thống với các sản phẩm tương tự, tổng kết các chức năng đã hoàn thành, các chỉ tiêu đạt được, những hạn chế còn tồn tại và bài học kinh nghiệm. Phần hướng phát triển đề xuất các công việc hoàn thiện trong ngắn hạn, các tính năng mới trong trung và dài hạn, cùng định hướng nghiên cứu tiềm năng.
+
+\end{document}

@@ -1,0 +1,691 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\setcounter{figure}{9}
+
+\noindent\textbf{Mở đầu chương.}
+
+Chương này trình bày chi tiết quá trình thiết kế, triển khai và đánh giá hệ thống AI NVCB. Nội dung chương bao gồm: (1) Thiết kế kiến trúc phần mềm với biểu đồ gói UML, (2) Thiết kế chi tiết giao diện, lớp và cơ sở dữ liệu, (3) Xây dựng ứng dụng với các công cụ và thư viện cụ thể, (4) Kiểm thử hệ thống, và (5) Triển khai và đánh giá kết quả. Các thiết kế trong chương này được xây dựng dựa trên yêu cầu chức năng (UC01-UC04) và phi chức năng (NFR01-NFR21) đã xác định tại Chương 2, sử dụng các công nghệ đã lựa chọn tại Chương 3.
+
+\section{Thiết kế kiến trúc}
+
+\subsection{Lựa chọn kiến trúc phần mềm}
+
+\subsubsection{Kiến trúc phân lớp (Layered Architecture)}
+
+Hệ thống AI NVCB được xây dựng theo \textbf{kiến trúc phân lớp (Layered Architecture)} kết hợp với \textbf{mô hình Repository Pattern}. Đây là kiến trúc phổ biến trong các ứng dụng enterprise, phân tách hệ thống thành các tầng độc lập với trách nhiệm rõ ràng.
+
+\textbf{Định nghĩa kiến trúc phân lớp:}
+
+Kiến trúc phân lớp tổ chức hệ thống thành các tầng (layers) xếp chồng lên nhau, trong đó mỗi tầng chỉ giao tiếp với tầng liền kề. Nguyên tắc cơ bản là: (i) tầng trên phụ thuộc vào tầng dưới, (ii) tầng dưới không biết đến sự tồn tại của tầng trên, và (iii) không có phụ thuộc bỏ qua tầng (skip-layer dependency).
+
+\textbf{Lý do lựa chọn:}
+
+Thứ nhất, kiến trúc phân lớp đáp ứng yêu cầu NFR18 về tính dễ bảo trì đã nêu tại mục 2.4.5. Việc tách biệt các tầng cho phép thay đổi implementation ở một tầng mà không ảnh hưởng đến các tầng khác.
+
+Thứ hai, kiến trúc này phù hợp với stack công nghệ đã chọn tại Chương 3: FastAPI (backend API), Streamlit (frontend), và LangChain/Ollama (AI services). Mỗi công nghệ được ánh xạ vào một tầng cụ thể.
+
+Thứ ba, Repository Pattern được bổ sung để tách biệt logic truy cập dữ liệu, giúp dễ dàng thay đổi từ SQLite sang PostgreSQL hoặc database khác khi cần mở rộng quy mô.
+
+\subsubsection{Áp dụng kiến trúc vào hệ thống AI NVCB}
+
+Hệ thống AI NVCB được tổ chức thành \textbf{4 tầng chính}:
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Tầng} & \textbf{Tên gọi} & \textbf{Thành phần trong hệ thống} & \textbf{Trách nhiệm} \\ \\ \hline
+        \textbf{Tầng 1} & Presentation Layer & frontend/ (Streamlit) & Giao diện người dùng, xử lý input/output \\ \\ \hline
+        \textbf{Tầng 2} & API Layer & backend/api/ (FastAPI) & Định nghĩa REST API endpoints, validation \\ \\ \hline
+        \textbf{Tầng 3} & Business Logic Layer & backend/document\_analysis/, backend/slide\_generation/, backend/model\_management/ & Xử lý nghiệp vụ chính: phân tích tài liệu, tạo slide, quản lý model \\ \\ \hline
+        \textbf{Tầng 4} & Data Access Layer & utils/repository.py, utils/database.py & Truy cập CSDL, lưu trữ file \\ \\ \hline
+    \end{tabular}
+    \caption{Áp dụng kiến trúc vào hệ thống AI NVCB}
+    \label{tab:chuong4_1}
+\end{table}
+
+\textbf{Thành phần bổ sung:}
+\begin{itemize}
+    \item \textbf{External Services}: Ollama LLM Server, FAISS Vector Store - các dịch vụ bên ngoài mà hệ thống tích hợp
+    \item \textbf{Utilities}: utils/ - các module tiện ích dùng chung (logging, cleanup, health check)
+\end{itemize}
+
+\subsubsection{So sánh với kiến trúc MVC truyền thống}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Thành phần MVC} & \textbf{Tương ứng trong AI NVCB} & \textbf{Mở rộng/Cải tiến} \\ \\ \hline
+        \textbf{Model} & utils/repository.py + Pydantic Models & Sử dụng Repository Pattern thay vì Active Record \\ \\ \hline
+        \textbf{View} & frontend/ (Streamlit pages) & Tách biệt hoàn toàn khỏi backend qua REST API \\ \\ \hline
+        \textbf{Controller} & backend/api/ (FastAPI routers) & Tách thành API Layer + Service Layer \\ \\ \hline
+    \end{tabular}
+    \caption{So sánh với kiến trúc MVC truyền thống}
+    \label{tab:chuong4_2}
+\end{table}
+
+Điểm cải tiến so với MVC truyền thống là việc tách Controller thành hai phần: API Layer (chỉ xử lý HTTP request/response) và Service Layer (chứa business logic). Điều này tuân theo nguyên tắc Single Responsibility Principle (SRP).
+
+\subsection{Thiết kế tổng quan}
+
+\subsubsection{Biểu đồ gói UML (Package Diagram)}
+
+Biểu đồ dưới đây thể hiện cấu trúc các gói trong hệ thống AI NVCB và mối quan hệ phụ thuộc giữa chúng. Các gói được sắp xếp theo tầng từ trên xuống dưới.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture10.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig10}
+\end{figure}
+
+\subsubsection{Mô tả chi tiết các gói}
+
+\textbf{Tầng Trình Bày (Presentation Layer):}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Gói} & \textbf{Mô tả} & \textbf{Liên kết Use Case} \\ \\ \hline
+        frontend.pages & Các trang giao diện chính của ứng dụng Streamlit & UC01-UC04 \\ \\ \hline
+        frontend.components & Các component tái sử dụng (sidebar, chat, system prompt) & Hỗ trợ UC01.4 \\ \\ \hline
+        frontend.app & Entry point của ứng dụng frontend & - \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các gói}
+    \label{tab:chuong4_3}
+\end{table}
+
+\textbf{Tầng API (API Layer):}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Gói} & \textbf{Mô tả} & \textbf{Endpoints chính} \\ \\ \hline
+        backend.api & FastAPI routers định nghĩa REST API & /api/documents/*, /api/slides/*, /api/ollama/* \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các gói}
+    \label{tab:chuong4_4}
+\end{table}
+
+Chi tiết các router:
+\begin{itemize}
+    \item document\_routes.py: Upload tài liệu, phân tích, Q\&A, tạo quiz (UC01, UC03)
+    \item slide\_routes.py: Tạo slide từ chủ đề/tài liệu (UC02)
+    \item model\_routes.py: Quản lý model Ollama (UC04)
+    \item health\_routes.py: Health check endpoints (NFR06)
+    \item cleanup\_routes.py: Dọn dẹp storage (NFR09)
+\end{itemize}
+
+\textbf{Tầng Nghiệp Vụ (Business Logic Layer):}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{0.25\textwidth}|p{0.30\textwidth}|p{0.38\textwidth}|}
+        \hline
+        \textbf{Gói} & \textbf{Mô tả} & \textbf{Lớp chính} \\ \hline
+        backend.document\_analysis & Xử lý phân tích tài liệu và RAG & DocumentAnalysisService \\ \hline
+        backend.slide\_generation & Tạo nội dung slide và file PPTX & SlideGenerationService, PowerPointGenerator \\ \hline
+        backend.model\_management & Quản lý model LLM và system prompt & ModelManager, SystemPromptManager \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các gói}
+    \label{tab:chuong4_5}
+\end{table}
+
+\textbf{Tầng Truy Cập Dữ Liệu (Data Access Layer):}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Gói} & \textbf{Mô tả} & \textbf{Pattern áp dụng} \\ \\ \hline
+        utils.repository & CRUD operations cho documents, chat history & Repository Pattern \\ \\ \hline
+        utils.database & Kết nối SQLite, quản lý schema & Context Manager \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các gói}
+    \label{tab:chuong4_6}
+\end{table}
+
+\subsection{Thiết kế chi tiết gói}
+
+\subsubsection{4.1.3.1 Gói backend.api}
+
+Gói này chứa các FastAPI routers, đóng vai trò Controller trong kiến trúc. Mỗi router xử lý một nhóm chức năng cụ thể.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture11.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig11}
+\end{figure}
+
+\textbf{Giải thích thiết kế:}
+
+Mỗi router được thiết kế theo nguyên tắc Single Responsibility - chỉ xử lý một nhóm chức năng liên quan. Router không chứa business logic, chỉ thực hiện: (i) validate input với Pydantic, (ii) gọi service tương ứng, và (iii) format response.
+
+\subsubsection{4.1.3.2 Gói backend.document\_analysis}
+
+Gói này chứa service xử lý nghiệp vụ phân tích tài liệu, triển khai kỹ thuật RAG đã trình bày tại mục 3.5.2.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Hinhve/Picture12.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig12}
+\end{figure}
+
+\textbf{Giải thích thiết kế:}
+
+DocumentAnalysisService là lớp chính của gói, sử dụng Composition để tích hợp các thành phần LangChain (Ollama LLM, HuggingFace Embeddings). Service này triển khai các use case UC01.1-UC01.4 và UC03.
+
+Mối quan hệ với GlobalModelConfig và SystemPromptManager cho phép service đồng bộ cấu hình model trên toàn hệ thống, đáp ứng yêu cầu UC04.3.
+
+\subsubsection{4.1.3.3 Gói backend.slide\_generation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{Hinhve/Picture13.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig13}
+\end{figure}
+
+\textbf{Giải thích thiết kế:}
+
+SlideGenerationService orchestrates toàn bộ quy trình tạo slide (UC02), từ việc parse tài liệu đầu vào đến việc gọi LLM sinh nội dung. PowerPointGenerator được tách riêng theo nguyên tắc SRP, chỉ chịu trách nhiệm tạo file PPTX từ dữ liệu JSON.
+
+\subsubsection{4.1.3.4 Gói backend.model\_management}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture14.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig14}
+\end{figure}
+
+\textbf{Giải thích thiết kế:}
+
+GlobalModelConfig và SystemPromptManager sử dụng \textbf{Singleton Pattern} để đảm bảo chỉ có một instance duy nhất trên toàn hệ thống. Điều này quan trọng vì cấu hình model cần được đồng bộ giữa các service (DocumentAnalysisService và SlideGenerationService).
+
+ModelManager sử dụng async/await để xử lý việc download model trong background, tránh block request của người dùng.
+
+\subsubsection{4.1.3.5 Gói utils (Data Access Layer)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{Hinhve/Picture15.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:Fig15}
+\end{figure}
+
+\textbf{Giải thích thiết kế:}
+
+Gói utils triển khai \textbf{Repository Pattern} để tách biệt logic truy cập dữ liệu khỏi business logic. Mỗi entity (Document, ChatHistory, Slide) có repository riêng với các phương thức CRUD chuẩn.
+
+DatabaseConnection sử dụng \textbf{Context Manager Pattern} để đảm bảo connection được đóng đúng cách, tránh resource leak.
+
+\subsection{Tổng kết thiết kế kiến trúc}
+
+Kiến trúc phân lớp của hệ thống AI NVCB đảm bảo các nguyên tắc thiết kế sau:
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{4.5cm}|p{8cm}|}
+        \hline
+        \textbf{Nguyên tắc} & \textbf{Cách áp dụng} \\ \hline
+        \textbf{Separation of Concerns} & Mỗi tầng có trách nhiệm riêng biệt \\ \hline
+        \textbf{Single Responsibility} & Mỗi class/module thực hiện một nhiệm vụ cụ thể \\ \hline
+        \textbf{Dependency Inversion} & Business layer không phụ thuộc trực tiếp vào database, mà qua Repository \\ \hline
+        \textbf{Don't Repeat Yourself} & GlobalModelConfig và SystemPromptManager dùng chung cho các service \\ \hline
+    \end{tabular}
+    \caption{Tổng kết thiết kế kiến trúc}
+    \label{tab:chuong4_7}
+\end{table}
+
+Kiến trúc này đáp ứng các yêu cầu phi chức năng:
+\begin{itemize}
+    \item \textbf{NFR18}: Tính dễ bảo trì - có thể thay đổi một tầng mà không ảnh hưởng tầng khác
+    \item \textbf{NFR21}: Docker containerization - mỗi tầng có thể được đóng gói riêng
+    \item \textbf{NFR14}: Bảo mật - dữ liệu chỉ được truy cập qua Repository layer
+\end{itemize}
+
+\section{Thiết kế chi tiết}
+
+\subsection{Thiết kế giao diện}
+
+\subsubsection{Đặc tả môi trường hiển thị}
+
+Hệ thống AI NVCB được thiết kế như ứng dụng web responsive, tối ưu cho trải nghiệm trên desktop. Đặc tả kỹ thuật giao diện như sau:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{0.25\textwidth}|p{0.25\textwidth}|p{0.43\textwidth}|}
+\hline
+\textbf{Thuộc tính} & \textbf{Giá trị} & \textbf{Ghi chú} \\ \hline
+\textbf{Độ phân giải tối thiểu} & 1280 x 720 px & HD ready \\ \hline
+\textbf{Độ phân giải khuyến nghị} & 1920 x 1080 px & Full HD \\ \hline
+\textbf{Layout} & Wide mode & Tận dụng tối đa không gian màn hình \\ \hline
+\textbf{Responsive} & Desktop-first & Hỗ trợ tablet, không tối ưu mobile \\ \hline
+\textbf{Color depth} & 24-bit (True Color) & 16.7 triệu màu \\ \hline
+\end{tabular}
+\caption{Đặc tả môi trường hiển thị của ứng dụng}
+\label{tab:chuong4_8}
+\end{table}
+
+\subsubsection{Quy chuẩn thiết kế giao diện}
+
+\textbf{1. Bảng màu (Color Palette):}
+
+Hệ thống sử dụng Dark Theme để giảm mỏi mắt khi làm việc lâu, phù hợp với đối tượng người dùng là giáo viên và nhân viên văn phòng (mục 2.1.1).
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Biến CSS} & \textbf{Giá trị Hex} & \textbf{Mục đích sử dụng} \\ \\ \hline
+        --primary-color & \#1f77b4 & Màu chính, buttons, links \\ \\ \hline
+        --secondary-color & \#2c3e50 & Màu phụ, headers \\ \\ \hline
+        --accent-color & \#3498db & Điểm nhấn, hover states \\ \\ \hline
+        --background-dark & \#0E1117 & Nền chính \\ \\ \hline
+        --card-background & \#262730 & Nền thẻ, containers \\ \\ \hline
+        --text-primary & \#FAFAFA & Văn bản chính \\ \\ \hline
+        --text-secondary & \#888888 & Văn bản phụ \\ \\ \hline
+        --success-color & \#2ecc71 & Trạng thái thành công \\ \\ \hline
+        --error-color & \#e74c3c & Trạng thái lỗi \\ \\ \hline
+        --warning-color & \#f1c40f & Trạng thái cảnh báo \\ \\ \hline
+    \end{tabular}
+    \caption{Quy chuẩn thiết kế giao diện}
+    \label{tab:chuong4_9}
+\end{table}
+
+\textbf{2. Quy chuẩn thành phần giao diện:}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Thành phần} & \textbf{Quy chuẩn} \\ \\ \hline
+        \textbf{Buttons} & Border-radius: 8px, Height: 3em, Gradient background \\ \\ \hline
+        \textbf{Input fields} & Border-radius: 8px, Border: 1px solid rgba(255,255,255,0.1) \\ \\ \hline
+        \textbf{Cards} & Border-radius: 10px, Padding: 1.5rem, Box-shadow: 0 4px 6px \\ \\ \hline
+        \textbf{File uploader} & Border: 2px dashed, Background: card-background \\ \\ \hline
+        \textbf{Headers (h1-h4)} & Font-weight: 600, Color: text-primary \\ \\ \hline
+    \end{tabular}
+    \caption{Quy chuẩn thiết kế giao diện}
+    \label{tab:chuong4_10}
+\end{table}
+
+\textbf{3. Quy chuẩn hiển thị trạng thái:}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Trạng thái} & \textbf{Hiển thị} & \textbf{Component Streamlit} \\ \\ \hline
+        Đang xử lý & Spinner + thông báo & st.spinner() \\ \\ \hline
+        Thành công & Toast màu xanh lá & st.success() \\ \\ \hline
+        Lỗi & Toast màu đỏ & st.error() \\ \\ \hline
+        Cảnh báo & Toast màu vàng & st.warning() \\ \\ \hline
+        Thông tin & Toast màu xanh dương & st.info() \\ \\ \hline
+    \end{tabular}
+    \caption{Quy chuẩn thiết kế giao diện}
+    \label{tab:chuong4_11}
+\end{table}
+
+Quy chuẩn này đáp ứng yêu cầu NFR12 (hiển thị trạng thái realtime) và NFR13 (thông báo lỗi rõ ràng).
+
+\subsubsection{Thiết kế mockup các màn hình chính}
+
+\textbf{Màn hình 1: Trang chủ (Home)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Hinhve/Picture16.png}
+    \caption{Trang chủ}
+    \label{fig:Fig16}
+\end{figure}
+
+\textbf{Màn hình 2: Phân tích Tài liệu (UC01)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Hinhve/Picture17.png}
+    \caption{Phân tích tài liệu}
+    \label{fig:Fig17}
+\end{figure}
+
+\textbf{Màn hình 3: Tạo Slide AI (UC02)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Hinhve/Picture18.png}
+    \caption{Tạo slide AI}
+    \label{fig:Fig18}
+\end{figure}
+
+\textbf{Màn hình 4: Quản lý Model AI (UC04)}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{Hinhve/Picture19.png}
+    \caption{Quản lý Model AI}
+    \label{fig:Fig19}
+\end{figure}
+
+\subsection{Thiết kế lớp}
+
+\subsubsection{Thiết kế chi tiết các lớp chủ đạo}
+
+\textbf{Lớp 1: DocumentAnalysisService}
+
+Lớp này là core service xử lý nghiệp vụ phân tích tài liệu, triển khai các use case UC01.1-UC01.4 và UC03.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Thuộc tính} & \textbf{Kiểu dữ liệu} & \textbf{Mô tả} \\ \\ \hline
+        model\_name & str & Tên model LLM đang sử dụng \\ \\ \hline
+        temperature & float & Tham số temperature cho LLM \\ \\ \hline
+        base\_url & str & URL của Ollama server \\ \\ \hline
+        llm & Ollama & Instance của LangChain Ollama wrapper \\ \\ \hline
+        embeddings & HuggingFaceEmbeddings & Model tạo embeddings \\ \\ \hline
+        chat\_histories & Dict[str, List] & Lưu trữ lịch sử hội thoại theo document\_id \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_12}
+\end{table}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Phương thức} & \textbf{Tham số} & \textbf{Trả về} & \textbf{Mô tả} \\ \\ \hline
+        \_\_init\_\_ & model\_name, base\_url, temperature & None & Khởi tạo service với cấu hình \\ \\ \hline
+        analyze\_document & file\_content, query\_type, user\_query, system\_prompt & Dict[str, str] & Phân tích tài liệu đơn \\ \\ \hline
+        analyze\_multiple\_documents & file\_contents, filenames, query, system\_prompt & Dict & Phân tích nhiều tài liệu với RAG \\ \\ \hline
+        generate\_quiz & file\_content, num\_questions, difficulty & Dict[str, Any] & Tạo quiz từ tài liệu đơn \\ \\ \hline
+        generate\_quiz\_multiple & file\_contents, filenames, num\_questions, difficulty & Dict & Tạo quiz từ nhiều tài liệu \\ \\ \hline
+        set\_model & model\_name & None & Thay đổi model LLM \\ \\ \hline
+        get\_current\_model & - & str & Lấy tên model hiện tại \\ \\ \hline
+        \_load\_document & file\_path, start\_page, end\_page & List[Document] & Load và parse tài liệu \\ \\ \hline
+        \_initialize\_model & - & Ollama & Khởi tạo LLM instance \\ \\ \hline
+        add\_to\_chat\_history & document\_id, user\_query, system\_response & None & Lưu lịch sử chat \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_13}
+\end{table}
+
+\textbf{Lớp 2: SlideGenerationService}
+
+Lớp này xử lý nghiệp vụ tạo slide, triển khai use case UC02.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Thuộc tính} & \textbf{Kiểu dữ liệu} & \textbf{Mô tả} \\ \\ \hline
+        model\_name & str & Tên model LLM \\ \\ \hline
+        base\_url & str & URL Ollama server \\ \\ \hline
+        llm & Ollama & Instance LangChain Ollama \\ \\ \hline
+        pptx\_generator & PowerPointGenerator & Generator tạo file PPTX \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_14}
+\end{table}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Phương thức} & \textbf{Tham số} & \textbf{Trả về} & \textbf{Mô tả} \\ \\ \hline
+        \_\_init\_\_ & model\_name, base\_url & None & Khởi tạo service \\ \\ \hline
+        generate\_slides & topic, num\_slides, document\_content, system\_prompt & Dict[str, List] & Tạo slides từ chủ đề \\ \\ \hline
+        parse\_document & file\_content, file\_type & str & Parse tài liệu sang text \\ \\ \hline
+        set\_model & model\_name & None & Thay đổi model \\ \\ \hline
+        get\_current\_model & - & str & Lấy model hiện tại \\ \\ \hline
+        \_parse\_pdf & file\_content & str & Parse file PDF \\ \\ \hline
+        \_parse\_docx & file\_content & str & Parse file DOCX \\ \\ \hline
+        \_parse\_txt & file\_content & str & Parse file TXT \\ \\ \hline
+        \_save\_slides & topic, slides\_data & str & Lưu slides JSON \\ \\ \hline
+        \_invoke\_model & prompt, system\_prompt & str & Gọi LLM sinh nội dung \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_15}
+\end{table}
+
+\textbf{Lớp 3: PowerPointGenerator}
+
+Lớp này tạo file PPTX từ dữ liệu JSON, sử dụng thư viện python-pptx.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Thuộc tính} & \textbf{Kiểu dữ liệu} & \textbf{Mô tả} \\ \\ \hline
+        prs & Presentation & Instance của python-pptx Presentation \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_16}
+\end{table}
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Phương thức} & \textbf{Tham số} & \textbf{Trả về} & \textbf{Mô tả} \\ \\ \hline
+        \_\_init\_\_ & - & None & Khởi tạo Presentation rỗng \\ \\ \hline
+        generate\_presentation & slides\_data, output\_path & str & Tạo file PPTX hoàn chỉnh \\ \\ \hline
+        add\_slide & slide\_data & None & Thêm một slide với title và bullets \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_17}
+\end{table}
+
+\textbf{Lớp 4: DocumentRepository}
+
+Lớp này triển khai Repository Pattern cho entity Document, tách biệt logic CRUD khỏi business logic.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Phương thức} & \textbf{Tham số} & \textbf{Trả về} & \textbf{Mô tả} \\ \\ \hline
+        insert\_document & user\_id, filename, path, content\_type, size, meta & Dict[str, Any] & Thêm document mới \\ \\ \hline
+        get\_document\_by\_id & document\_id & Optional[Dict] & Lấy document theo ID \\ \\ \hline
+        get\_documents\_by\_user & user\_id, limit, offset & List[Dict] & Lấy danh sách document của user \\ \\ \hline
+        update\_document\_content & document\_id, content & bool & Cập nhật nội dung document \\ \\ \hline
+        update\_document\_meta & document\_id, meta & bool & Cập nhật metadata \\ \\ \hline
+        delete\_document & document\_id & bool & Xóa document \\ \\ \hline
+        get\_old\_documents & cutoff\_date & List[Dict] & Lấy documents cũ hơn cutoff \\ \\ \hline
+        insert\_or\_get\_document & document\_id, user\_id, filename, ... & Dict & Insert hoặc trả về document có sẵn \\ \\ \hline
+    \end{tabular}
+    \caption{Thiết kế chi tiết các lớp chủ đạo}
+    \label{tab:chuong4_18}
+\end{table}
+
+\subsubsection{Biểu đồ trình tự cho các Use Case quan trọng}
+
+\textbf{Biểu đồ trình tự UC01.3: Hỏi đáp tài liệu (RAG Q\&A)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture16.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:SeqUC01_3}
+\end{figure}
+
+\textbf{Giải thích luồng xử lý:}
+
+1. Người dùng tải file và nhập câu hỏi trên giao diện Streamlit
+2. Frontend gửi request POST đến API endpoint /api/documents/analyze
+3-4. API kiểm tra và lưu document vào database (tránh duplicate)
+5. API gọi DocumentAnalysisService.analyze\_document() với query\_type="qa"
+6-7. Service load và chia nhỏ văn bản thành chunks (1000 ký tự, overlap 200)
+8-9. Tạo FAISS vector store từ chunks với HuggingFace embeddings
+10-11. Tìm kiếm 3 chunks liên quan nhất với câu hỏi (similarity search)
+12. Tạo prompt kết hợp context và câu hỏi
+13-14. Gọi Ollama LLM để sinh câu trả lời
+15. Lưu vào chat history trong memory
+16-18. Trả về kết quả và lưu vào database
+19-21. Hiển thị kết quả cho người dùng
+
+\textbf{Biểu đồ trình tự UC02: Tạo Slide AI}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture17.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:SeqUC02}
+\end{figure}
+
+\textbf{Giải thích luồng xử lý:}
+
+1. Người dùng nhập chủ đề, chọn số slide (1-20), có thể upload tài liệu tham khảo
+2. Frontend gửi request với multipart/form-data
+3a-3c. Nếu có tài liệu, API gọi service parse nội dung text
+4. API gọi generate\_slides() với các tham số
+5. Service tạo prompt từ template, thêm context từ tài liệu
+6-10. Gọi LLM và retry tối đa 3 lần nếu JSON không hợp lệ
+11. Validate và normalize dữ liệu slides
+12-15. PowerPointGenerator tạo file PPTX với python-pptx
+17-18. Lưu JSON backup để có thể chỉnh sửa sau
+19-21. Trả về kết quả và hiển thị preview
+22-27. Người dùng tải xuống file PPTX
+
+\subsection{Thiết kế cơ sở dữ liệu}
+
+\subsubsection{Biểu đồ thực thể liên kết (ER Diagram)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics{Hinhve/Picture18.png}
+    \caption{Ví dụ biểu đồ phụ thuộc gói}
+    \label{fig:ERDiagram}
+\end{figure}
+
+\subsubsection{Mô tả chi tiết các bảng}
+
+\textbf{Bảng 1: documents}
+
+Lưu trữ thông tin tài liệu đã upload, phục vụ UC01.1.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Cột} & \textbf{Kiểu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \\ \hline
+        id & TEXT & PRIMARY KEY & UUID dựa trên nội dung file (content-based ID) \\ \\ \hline
+        user\_id & TEXT & NOT NULL & ID người dùng sở hữu \\ \\ \hline
+        filename & TEXT & NOT NULL & Tên file gốc \\ \\ \hline
+        path & TEXT & NOT NULL & Đường dẫn file trên storage \\ \\ \hline
+        content\_type & TEXT & - & MIME type (application/pdf, ...) \\ \\ \hline
+        size & INTEGER & - & Kích thước file (bytes) \\ \\ \hline
+        content & TEXT & - & Nội dung text đã extract \\ \\ \hline
+        hash & TEXT & - & MD5 hash của file \\ \\ \hline
+        meta & TEXT & - & Metadata JSON (pages, author, ...) \\ \\ \hline
+        created\_at & INTEGER & NOT NULL & Unix timestamp tạo \\ \\ \hline
+        updated\_at & INTEGER & NOT NULL & Unix timestamp cập nhật \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các bảng}
+    \label{tab:chuong4_19}
+\end{table}
+
+\textbf{Bảng 2: chat\_history}
+
+Lưu trữ lịch sử hội thoại Q\&A, phục vụ UC01.4.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Cột} & \textbf{Kiểu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \\ \hline
+        id & TEXT & PRIMARY KEY & UUID ngẫu nhiên \\ \\ \hline
+        document\_id & TEXT & FOREIGN KEY & Liên kết đến documents.id \\ \\ \hline
+        user\_query & TEXT & NOT NULL & Câu hỏi của người dùng \\ \\ \hline
+        system\_response & TEXT & - & Câu trả lời của AI \\ \\ \hline
+        meta & TEXT & - & Metadata (model used, latency, ...) \\ \\ \hline
+        created\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+        updated\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các bảng}
+    \label{tab:chuong4_20}
+\end{table}
+
+\textbf{Ràng buộc:} FOREIGN KEY (document\_id) REFERENCES documents(id) ON DELETE CASCADE
+
+\textbf{Bảng 3: slides}
+
+Lưu trữ lịch sử tạo slide, phục vụ UC02.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Cột} & \textbf{Kiểu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \\ \hline
+        id & TEXT & PRIMARY KEY & UUID ngẫu nhiên \\ \\ \hline
+        user\_id & TEXT & NOT NULL & ID người tạo \\ \\ \hline
+        title & TEXT & NOT NULL & Chủ đề/tiêu đề bài trình bày \\ \\ \hline
+        slide\_count & INTEGER & - & Số lượng slides \\ \\ \hline
+        content & TEXT & - & Nội dung slides dạng JSON \\ \\ \hline
+        json\_path & TEXT & - & Đường dẫn file JSON backup \\ \\ \hline
+        pptx\_path & TEXT & - & Đường dẫn file PPTX \\ \\ \hline
+        meta & TEXT & - & Metadata (model, documents used, ...) \\ \\ \hline
+        created\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+        updated\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các bảng}
+    \label{tab:chuong4_21}
+\end{table}
+
+\textbf{Bảng 4: quizzes}
+
+Lưu trữ lịch sử tạo quiz, phục vụ UC03.
+
+\begin{table}[H]
+\centering
+    \begin{tabular}{|p{3.3cm}|p{3.3cm}|p{3.3cm}|p{3.3cm}|}
+        \hline
+        \textbf{Cột} & \textbf{Kiểu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \\ \hline
+        id & TEXT & PRIMARY KEY & UUID ngẫu nhiên \\ \\ \hline
+        document\_id & TEXT & FOREIGN KEY & Liên kết đến documents.id \\ \\ \hline
+        questions\_count & INTEGER & - & Số câu hỏi \\ \\ \hline
+        difficulty & TEXT & - & Mức độ khó (easy/medium/hard) \\ \\ \hline
+        content & TEXT & - & Nội dung quiz dạng JSON \\ \\ \hline
+        meta & TEXT & - & Metadata \\ \\ \hline
+        created\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+        updated\_at & INTEGER & NOT NULL & Unix timestamp \\ \\ \hline
+    \end{tabular}
+    \caption{Mô tả chi tiết các bảng}
+    \label{tab:chuong4_22}
+\end{table}
+
+\textbf{Ràng buộc:} FOREIGN KEY (document\_id) REFERENCES documents(id) ON DELETE CASCADE
+
+\subsubsection{Lý do chọn SQLite}
+
+SQLite được chọn làm hệ quản trị CSDL chính vì:
+
+1. \textbf{Embedded database}: Không cần cài đặt server riêng, phục vụ triển khai on-premise đơn giản (NFR14)
+2. \textbf{Zero-configuration}: Không cần quản trị, tự động tạo file database
+3. \textbf{Đủ cho quy mô dự án}: Hỗ trợ tối thiểu 10 users đồng thời (NFR04)
+4. \textbf{Dễ backup}: Chỉ cần copy một file .sqlite
+5. \textbf{Tương thích}: Có thể migrate sang PostgreSQL khi cần scale
+
+\subsubsection{Cơ chế CASCADE DELETE}
+
+Khi xóa một document, tất cả chat\_history và quizzes liên quan sẽ tự động bị xóa theo, đảm bảo tính toàn vẹn dữ liệu và tránh orphan records.
+
+\section{Xây dựng ứng dụng}
+\subsection{Thư viện và công cụ sử dụng}
+Nội dung chi tiết được chuyển sang Phụ lục C.
+\subsection{Kết quả đạt được}
+Nội dung chi tiết được chuyển sang Phụ lục C.
+\subsection{Minh họa các chức năng chính}
+Nội dung chi tiết được chuyển sang Phụ lục C.
+
+\section{Kiểm thử}
+Nội dung chi tiết được chuyển sang Phụ lục C.
+
+\section{Triển khai}
+Nội dung chi tiết được chuyển sang Phụ lục C.
+
+\end{document}

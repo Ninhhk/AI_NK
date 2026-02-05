@@ -31,22 +31,38 @@ Sinh viên đề xuất kiến trúc **On-Premise AI Platform** sử dụng Olla
 
 **Kiến trúc tổng quan:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    On-Premise AI Platform                        │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Streamlit  │  │   FastAPI   │  │      LangChain          │  │
-│  │  Frontend   │──│   Backend   │──│  (Orchestration Layer)  │  │
-│  └─────────────┘  └─────────────┘  └───────────┬─────────────┘  │
-│                                                 │                │
-│  ┌─────────────┐  ┌─────────────┐  ┌───────────▼─────────────┐  │
-│  │   SQLite    │  │    FAISS    │  │        Ollama           │  │
-│  │  (Metadata) │  │  (Vectors)  │  │   (Local LLM Server)    │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│                                                                  │
-│  Models: Qwen2.5, Llama3.1, Gemma2, DeepSeek-R1, etc.          │
-└─────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+
+package "On-Premise AI Platform" #LightBlue {
+    
+    package "Application Layer" {
+        component [Streamlit\nFrontend] as Frontend
+        component [FastAPI\nBackend] as Backend
+        component [LangChain\n(Orchestration Layer)] as LangChain
+    }
+    
+    package "Data & AI Layer" {
+        component [SQLite\n(Metadata)] as SQLite
+        component [FAISS\n(Vectors)] as FAISS
+        component [Ollama\n(Local LLM Server)] as Ollama
+    }
+    
+    Frontend --> Backend
+    Backend --> LangChain
+    LangChain --> Ollama
+    Backend --> SQLite
+    Backend --> FAISS
+    
+    note bottom of Ollama
+        Models: Qwen2.5, Llama3.1,
+        Gemma2, DeepSeek-R1, etc.
+    end note
+}
+
+@enduml
 ```
 
 **Các thành phần chính:**
@@ -116,47 +132,42 @@ Sinh viên thiết kế **Multi-Document RAG Pipeline** với cơ chế truy xu�
 
 **Kiến trúc RAG Pipeline:**
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                   Multi-Document RAG Pipeline                     │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌─────────────┐    ┌──────────────┐    ┌───────────────────┐   │
-│  │  Document   │───▶│   Chunking   │───▶│    Embedding      │   │
-│  │   Loader    │    │  (1000/200)  │    │ (all-MiniLM-L6-v2)│   │
-│  └─────────────┘    └──────────────┘    └─────────┬─────────┘   │
-│        │                                          │              │
-│        ▼                                          ▼              │
-│  ┌─────────────┐                        ┌───────────────────┐   │
-│  │  Metadata   │                        │   FAISS Vector    │   │
-│  │  Extraction │                        │      Store        │   │
-│  └─────────────┘                        └─────────┬─────────┘   │
-│                                                   │              │
-│  ┌────────────────────────────────────────────────┘              │
-│  │                                                               │
-│  ▼                                                               │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │              Topic-Based Retrieval                       │    │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐    │    │
-│  │  │ Topic 1 │  │ Topic 2 │  │ Topic 3 │  │ Topic N │    │    │
-│  │  │ Query   │  │ Query   │  │ Query   │  │ Query   │    │    │
-│  │  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘    │    │
-│  │       │            │            │            │          │    │
-│  │       └────────────┴────────────┴────────────┘          │    │
-│  │                         │                                │    │
-│  │                         ▼                                │    │
-│  │              ┌─────────────────────┐                    │    │
-│  │              │  Context Aggregator │                    │    │
-│  │              │  (Dedup + Merge)    │                    │    │
-│  │              └──────────┬──────────┘                    │    │
-│  └──────────────────────────┼───────────────────────────────┘    │
-│                             │                                    │
-│                             ▼                                    │
-│                   ┌─────────────────────┐                       │
-│                   │    LLM Generation   │                       │
-│                   │  (with Source Info) │                       │
-│                   └─────────────────────┘                       │
-└──────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+skinparam backgroundColor white
+
+title Multi-Document RAG Pipeline
+
+partition "Document Processing" #LightBlue {
+    :Document Loader;
+    fork
+        :Metadata Extraction;
+    fork again
+        :Chunking\n(1000/200);
+        :Embedding\n(all-MiniLM-L6-v2);
+        :FAISS Vector Store;
+    end fork
+}
+
+partition "Topic-Based Retrieval" #LightGreen {
+    fork
+        :Topic 1 Query;
+    fork again
+        :Topic 2 Query;
+    fork again
+        :Topic 3 Query;
+    fork again
+        :Topic N Query;
+    end fork
+    
+    :Context Aggregator\n(Dedup + Merge);
+}
+
+partition "Generation" #LightYellow {
+    :LLM Generation\n(with Source Info);
+}
+
+@enduml
 ```
 
 **Chiến lược Chunking tối ưu cho Tiếng Việt:**
@@ -265,72 +276,89 @@ Sinh viên thiết kế **Global Model Configuration System** sử dụng Single
 
 **Class Diagram:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     GlobalModelConfig (Singleton)                │
-├─────────────────────────────────────────────────────────────────┤
-│ - _instance: GlobalModelConfig                                   │
-│ - _lock: threading.Lock                                         │
-│ - model_name: str                                               │
-│ - temperature: float                                            │
-│ - max_tokens: int                                               │
-│ - last_updated: datetime                                        │
-│ - cache_validity: int = 60                                      │
-├─────────────────────────────────────────────────────────────────┤
-│ + get_instance(): GlobalModelConfig                             │
-│ + get_model_name(): str                                         │
-│ + set_model_name(name: str): void                               │
-│ + get_temperature(): float                                      │
-│ + set_temperature(temp: float): void                            │
-│ + is_cache_valid(): bool                                        │
-│ + refresh_from_ollama(): void                                   │
-│ + to_dict(): dict                                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              │ uses
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    SystemPromptManager (Singleton)               │
-├─────────────────────────────────────────────────────────────────┤
-│ - _instance: SystemPromptManager                                │
-│ - config_path: str                                              │
-│ - system_prompt: str                                            │
-│ - language_enforcement: bool                                    │
-├─────────────────────────────────────────────────────────────────┤
-│ + get_instance(): SystemPromptManager                           │
-│ + get_system_prompt(): str                                      │
-│ + set_system_prompt(prompt: str): void                          │
-│ + load_from_file(): void                                        │
-│ + save_to_file(): void                                          │
-│ + get_vietnamese_enforced_prompt(): str                         │
-└─────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+skinparam classAttributeIconSize 0
+skinparam backgroundColor white
+
+class GlobalModelConfig <<Singleton>> {
+    - _instance: GlobalModelConfig
+    - _lock: threading.Lock
+    - model_name: str
+    - temperature: float
+    - max_tokens: int
+    - last_updated: datetime
+    - cache_validity: int = 60
+    --
+    + get_instance(): GlobalModelConfig
+    + get_model_name(): str
+    + set_model_name(name: str): void
+    + get_temperature(): float
+    + set_temperature(temp: float): void
+    + is_cache_valid(): bool
+    + refresh_from_ollama(): void
+    + to_dict(): dict
+}
+
+class SystemPromptManager <<Singleton>> {
+    - _instance: SystemPromptManager
+    - config_path: str
+    - system_prompt: str
+    - language_enforcement: bool
+    --
+    + get_instance(): SystemPromptManager
+    + get_system_prompt(): str
+    + set_system_prompt(prompt: str): void
+    + load_from_file(): void
+    + save_to_file(): void
+    + get_vietnamese_enforced_prompt(): str
+}
+
+GlobalModelConfig ..> SystemPromptManager : uses
+
+@enduml
 ```
 
 **Sequence Diagram - Hot-Swap Model:**
 
-```
-User          Frontend       ModelManager    GlobalModelConfig    Ollama
-  │               │               │                 │                │
-  │ Select Model  │               │                 │                │
-  │──────────────▶│               │                 │                │
-  │               │ POST /model   │                 │                │
-  │               │──────────────▶│                 │                │
-  │               │               │ Check available │                │
-  │               │               │─────────────────────────────────▶│
-  │               │               │                 │    Model list  │
-  │               │               │◀────────────────────────────────│
-  │               │               │                 │                │
-  │               │               │ set_model_name  │                │
-  │               │               │────────────────▶│                │
-  │               │               │                 │ Update config  │
-  │               │               │                 │ Notify services│
-  │               │               │      OK         │                │
-  │               │               │◀───────────────│                │
-  │               │    Success    │                 │                │
-  │               │◀──────────────│                 │                │
-  │   Model       │               │                 │                │
-  │   Changed     │               │                 │                │
-  │◀──────────────│               │                 │                │
+```plantuml
+@startuml
+skinparam backgroundColor white
+skinparam sequenceMessageAlign center
+
+actor User
+participant Frontend
+participant ModelManager
+participant GlobalModelConfig
+participant Ollama
+
+User -> Frontend: Select Model
+activate Frontend
+
+Frontend -> ModelManager: POST /model
+activate ModelManager
+
+ModelManager -> Ollama: Check available
+activate Ollama
+Ollama --> ModelManager: Model list
+deactivate Ollama
+
+ModelManager -> GlobalModelConfig: set_model_name
+activate GlobalModelConfig
+note right of GlobalModelConfig
+    Update config
+    Notify services
+end note
+GlobalModelConfig --> ModelManager: OK
+deactivate GlobalModelConfig
+
+ModelManager --> Frontend: Success
+deactivate ModelManager
+
+Frontend --> User: Model Changed
+deactivate Frontend
+
+@enduml
 ```
 
 **Cơ chế Async Model Download:**
@@ -550,41 +578,60 @@ Sinh viên thiết kế **Robust JSON Generation Pipeline** với cơ chế retr
 
 **Kiến trúc Pipeline:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              JSON-Structured Content Generation                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐                                               │
-│  │   Prompt     │  Template với JSON schema rõ ràng             │
-│  │  Engineering │  + Few-shot examples                          │
-│  └──────┬───────┘                                               │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │   LLM Call   │────▶│ JSON Extract │────▶│   Validate   │    │
-│  │   Attempt 1  │     │   & Parse    │     │   Schema     │    │
-│  └──────────────┘     └──────────────┘     └──────┬───────┘    │
-│                                                    │             │
-│                              ┌─────────────────────┘             │
-│                              │                                   │
-│                              ▼                                   │
-│                       ┌─────────────┐                           │
-│                       │   Valid?    │                           │
-│                       └──────┬──────┘                           │
-│                              │                                   │
-│              ┌───────────────┼───────────────┐                  │
-│              │ Yes           │ No            │                  │
-│              ▼               ▼               ▼                  │
-│       ┌──────────┐    ┌──────────┐    ┌──────────┐             │
-│       │  Return  │    │  Retry   │    │  Retry   │             │
-│       │  Result  │    │  + Error │    │  + Error │             │
-│       └──────────┘    │  Context │    │  Context │             │
-│                       │ (Att. 2) │    │ (Att. 3) │             │
-│                       └──────────┘    └──────────┘             │
-│                                                                  │
-│  Max Retries: 3    │    Backoff: Exponential                    │
-└─────────────────────────────────────────────────────────────────┘
+```plantuml
+@startuml
+skinparam backgroundColor white
+
+title JSON-Structured Content Generation
+
+start
+
+:Prompt Engineering;
+note right
+    Template với JSON schema rõ ràng
+    + Few-shot examples
+end note
+
+:LLM Call (Attempt 1);
+
+:JSON Extract & Parse;
+
+:Validate Schema;
+
+if (Valid?) then (Yes)
+    :Return Result;
+    stop
+else (No)
+    :Retry + Error Context\n(Attempt 2);
+    
+    :JSON Extract & Parse;
+    :Validate Schema;
+    
+    if (Valid?) then (Yes)
+        :Return Result;
+        stop
+    else (No)
+        :Retry + Error Context\n(Attempt 3);
+        
+        :JSON Extract & Parse;
+        :Validate Schema;
+        
+        if (Valid?) then (Yes)
+            :Return Result;
+            stop
+        else (No)
+            :Raise Error;
+            stop
+        endif
+    endif
+endif
+
+note bottom
+    Max Retries: 3
+    Backoff: Exponential
+end note
+
+@enduml
 ```
 
 **Prompt Engineering cho JSON Output:**
