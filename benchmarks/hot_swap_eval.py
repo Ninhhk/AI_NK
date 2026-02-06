@@ -39,7 +39,7 @@ def get_model(base_url: str) -> Tuple[str, float, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="Backend base URL (default: %(default)s)")
-    parser.add_argument("--models", nargs="+", required=True, help="Models to toggle between (e.g., qwen3:8b llama3.1:8b)")
+    parser.add_argument("--models", nargs="+", required=True, help="Models to toggle between (e.g., qwen3:4b-instruct-2507-q4_K_M llama3.1:8b)")
     parser.add_argument("--runs", type=int, default=10, help="Number of set/get cycles")
     args = parser.parse_args()
 

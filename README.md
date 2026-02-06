@@ -120,7 +120,7 @@ pre-commit install
 ollama serve
 
 # Pull required models
-ollama pull qwen3:8b
+ollama pull qwen3:4b-instruct-2507-q4_K_M
 
 # Run the application
 python run_backend.py

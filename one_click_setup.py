@@ -8,7 +8,7 @@ Script này sẽ tự động:
 2. Stash và pull git changes
 3. Tạo virtual environment (venv) để cô lập dependencies
 4. Cài đặt dependencies (pip install -r requirements.txt)
-5. Tải và cấu hình AI model (mặc định: qwen3-vl:4b)
+5. Tải và cấu hình AI model (mặc định: qwen3:4b-instruct-2507-q4_K_M)
 6. Kiểm tra dependencies
 
 Usage:
@@ -32,7 +32,7 @@ from typing import List, Dict, Any, Tuple, Optional
 
 
 # ==================== CONSTANTS ====================
-DEFAULT_MODEL = "qwen3-vl:4b"
+DEFAULT_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 SCRIPT_DIR = Path(__file__).parent
 ENV_EXAMPLE_PATH = SCRIPT_DIR / ".env.example"
 ENV_PATH = SCRIPT_DIR / ".env"

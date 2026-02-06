@@ -27,7 +27,7 @@ python benchmarks/rag_eval.py --dataset data/rag_eval.jsonl --base-url http://lo
 a python benchmarks/json_parse_eval.py --dataset data/topics.jsonl --base-url http://localhost:8000/api --runs 30
 
 # Hot-swap latency for slide model
-a python benchmarks/hot_swap_eval.py --base-url http://localhost:8000/api --models qwen3:8b llama3.1:8b --runs 10
+a python benchmarks/hot_swap_eval.py --base-url http://localhost:8000/api --models qwen3:4b-instruct-2507-q4_K_M llama3.1:8b --runs 10
 
 # Health probe for 5 minutes (3s interval)
 a python benchmarks/health_uptime_probe.py --base-url http://localhost:8000/api --duration-sec 300 --interval-sec 3
