@@ -266,28 +266,29 @@ class OneClickSetup:
         self.next_step("Tạo Virtual Environment")
         
         if self.args.dry_run:
-            print_info(f"Dry run: Sẽ tạo venv tại {VENV_PATH}")
+            print_info(f"Dry run: Sẽ kiểm tra/tạo venv tại {VENV_PATH}")
             return True
         
         venv_python = get_venv_python()
         
-        # Check if venv already exists
+        # Check if venv already exists and is valid
         if VENV_PATH.exists() and venv_python.exists():
-            print_info(f"Virtual environment đã tồn tại: {VENV_PATH}")
-            if not self.args.force:
-                response = input("   Bạn có muốn tạo lại venv không? (y/N): ").strip().lower()
-                if response not in ('y', 'yes'):
-                    print_info("Giữ nguyên venv hiện tại.")
-                    return True
-            # Remove existing venv
-            print_info("Đang xóa venv cũ...")
+            print_success(f"Virtual environment đã tồn tại: {VENV_PATH}")
+            print_info(f"   Python: {venv_python}")
+            print_info("Sẽ sử dụng venv hiện tại. Dependencies sẽ được cập nhật ở bước tiếp theo.")
+            return True
+        
+        # Venv doesn't exist or is broken - create new one
+        if VENV_PATH.exists() and not venv_python.exists():
+            print_warning("Venv tồn tại nhưng không hợp lệ (thiếu Python executable)")
+            print_info("Đang xóa venv hỏng và tạo lại...")
             try:
                 shutil.rmtree(VENV_PATH)
             except Exception as e:
-                print_error(f"Không thể xóa venv cũ: {e}")
+                print_error(f"Không thể xóa venv hỏng: {e}")
                 return False
         
-        print_info(f"Đang tạo virtual environment tại: {VENV_PATH}")
+        print_info(f"Đang tạo virtual environment mới tại: {VENV_PATH}")
         
         try:
             import venv
@@ -390,7 +391,8 @@ class OneClickSetup:
                 ['ollama', 'list'],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                timeout=30  # Timeout 30 giây
             )
             
             models = []
@@ -409,6 +411,10 @@ class OneClickSetup:
                         })
             
             return models
+        except subprocess.TimeoutExpired:
+            print_error("Ollama không phản hồi (timeout 30s)")
+            print_info("Kiểm tra xem Ollama có đang chạy không: ollama serve")
+            return None
         except subprocess.CalledProcessError:
             print_error("Không thể kết nối với Ollama")
             print_info("Đảm bảo Ollama đang chạy: ollama serve")
